@@ -67,7 +67,7 @@ interface PhotoPick {
 /**
  * Host space setup: Location → Parking type → Photos → Instructions →
  * Authorization. The space is created once and reused for every future
- * "I'm leaving" share (Phase 3).
+ * "I'm leaving" share (see SpaceDetail → Share my spot).
  */
 export default function SpaceWizard() {
   const { user, loading: authLoading } = useAuth();

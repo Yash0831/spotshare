@@ -59,6 +59,38 @@ export class SessionExpiredError extends Error {
   }
 }
 
+/** Space display states — derived server-side, never stored. */
+export type DisplayState = 'OFFLINE' | 'PRIVATE' | 'AVAILABLE' | 'RESERVED' | 'RETURNING';
+
+export const DISPLAY_STATE_LABELS: Record<DisplayState, string> = {
+  OFFLINE: 'OFFLINE',
+  PRIVATE: 'PRIVATE',
+  AVAILABLE: 'AVAILABLE',
+  RESERVED: 'RESERVED',
+  RETURNING: 'RETURNING',
+};
+
+/** A host's share window. `live` is derived server-side from the timestamps. */
+export interface AvailabilityWindow {
+  id: string;
+  spaceId: string;
+  startsAt: string;
+  endsAt: string;
+  source: 'MANUAL' | 'COMMUTE' | 'VACATION';
+  /** Integer cents per hour; null = free share. */
+  hourlyRateCents: number | null;
+  live: boolean;
+  createdAt: string;
+}
+
+/** The one-tap share payload. The window starts now; the host picks return + price. */
+export interface SharePayload {
+  /** ISO instant of the host's return time. */
+  returnTime: string;
+  /** Integer cents per hour; null/omitted = free. */
+  hourlyRateCents?: number | null;
+}
+
 /** Space types — the exact V1 set from the product spec. */
 export type ParkingType =
   | 'DRIVEWAY'
@@ -98,10 +130,10 @@ export interface SpacePhoto {
 }
 
 /**
- * The owner's view of a space — the ONLY space DTO in Phase 2. It includes
- * the private fields (exact address, space label, parking instructions)
- * because the caller is the host. Discovery (Phase 4) gets its own
- * privacy-safe DTO; privacy is enforced in the backend DTOs.
+ * The owner's view of a space. It includes the private fields (exact address,
+ * space label, parking instructions) because the caller is the host.
+ * Discovery (Phase 4) gets its own privacy-safe DTO; privacy is enforced in
+ * the backend DTOs. {@code displayState} is the derived availability status.
  */
 export interface ParkingSpace {
   id: string;
@@ -125,6 +157,8 @@ export interface ParkingSpace {
   authorizationConfirmedAt: string;
   active: boolean;
   photos: SpacePhoto[];
+  /** Derived server-side from the active flag + share windows. */
+  displayState: DisplayState;
   createdAt: string;
   updatedAt: string;
 }

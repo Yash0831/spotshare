@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { PARKING_TYPE_LABELS, ParkingSpace, SessionExpiredError } from '../api/types';
+import {
+  PARKING_TYPE_LABELS,
+  AvailabilityWindow,
+  DisplayState,
+  ParkingSpace,
+  SessionExpiredError,
+} from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { formatRate } from '../utils/money';
+import { formatDateTime, formatTime } from '../utils/time';
 
 /**
- * The host's "My Parking" surface: every space they own, with its status and
- * management actions. Phase 2 states are simple — OFFLINE (deactivated) or
- * PRIVATE (listed, not shared right now). AVAILABLE / RESERVED / RETURNING
- * derive from availability windows, which arrive in Phase 3.
+ * The host's "My Parking" surface: every space they own, with its derived
+ * status (OFFLINE / PRIVATE / AVAILABLE / RETURNING) and management actions,
+ * plus a cross-space list of current and upcoming shares.
  */
 export default function MyParking() {
   const { user, loading: authLoading } = useAuth();
@@ -16,11 +23,18 @@ export default function MyParking() {
   const [error, setError] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
+  const [shares, setShares] = useState<AvailabilityWindow[] | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setSpaces(await api.spaces.mine());
+      const [loadedSpaces, loadedShares] = await Promise.all([
+        api.spaces.mine(),
+        api.availability.mine(),
+      ]);
+      setSpaces(loadedSpaces);
+      setShares(loadedShares);
     } catch (e) {
       if (e instanceof SessionExpiredError) {
         setExpired(true);
@@ -52,8 +66,37 @@ export default function MyParking() {
     }
   }
 
+  async function removeShare(windowId: string) {
+    if (removingId !== windowId) {
+      setRemovingId(windowId);
+      return;
+    }
+    setRemovingId(null);
+    try {
+      await api.availability.remove(windowId);
+      await load();
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        setExpired(true);
+        return;
+      }
+      setError(e instanceof Error ? e.message : 'Could not remove the share. Please try again.');
+    }
+  }
+
   if (!authLoading && !user) return <Navigate to="/login" replace />;
   if (expired) return <Navigate to="/login" replace />;
+
+  const badgeCls: Record<DisplayState, string> = {
+    OFFLINE: 'bg-slate-200 text-slate-600',
+    PRIVATE: 'bg-emerald-100 text-emerald-800',
+    AVAILABLE: 'bg-sky-100 text-sky-800',
+    RETURNING: 'bg-amber-100 text-amber-800',
+    RESERVED: 'bg-violet-100 text-violet-800',
+  };
+
+  const spaceLabel = (spaceId: string) =>
+    spaces?.find((s) => s.id === spaceId)?.label ?? 'A space';
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-8">
@@ -71,6 +114,38 @@ export default function MyParking() {
         <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {shares !== null && shares.length > 0 && (
+        <section aria-label="Currently sharing" className="mt-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Currently sharing
+          </h2>
+          <div className="mt-2 space-y-2">
+            {shares.map((w) => (
+              <div key={w.id} className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50 p-4">
+                <div>
+                  <p className="text-sm font-bold text-sky-900">
+                    {spaceLabel(w.spaceId)} · {w.live ? `Available until ${formatTime(w.endsAt)}` : `Shared until ${formatDateTime(w.endsAt)}`}
+                  </p>
+                  <p className="mt-0.5 text-sm text-sky-800">{formatRate(w.hourlyRateCents)}</p>
+                </div>
+                {!w.live && (
+                  <button
+                    onClick={() => void removeShare(w.id)}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${
+                      removingId === w.id
+                        ? 'bg-red-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-700'
+                    }`}
+                  >
+                    {removingId === w.id ? 'Tap again to remove' : 'Remove'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {spaces === null ? (
@@ -119,11 +194,9 @@ export default function MyParking() {
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      space.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                    }`}
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${badgeCls[space.displayState]}`}
                   >
-                    {space.active ? 'PRIVATE' : 'OFFLINE'}
+                    {space.displayState}
                   </span>
                 </div>
                 <div className="mt-4 flex gap-2">

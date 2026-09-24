@@ -3,6 +3,8 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import {
   PARKING_TYPE_LABELS,
+  AvailabilityWindow,
+  DisplayState,
   ParkingSpace,
   ParkingType,
   SessionExpiredError,
@@ -11,6 +13,9 @@ import {
   VehicleSize,
 } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { formatRate } from '../utils/money';
+import { formatDateTime, formatRemaining, formatTime } from '../utils/time';
+import ShareSheet from '../components/ShareSheet';
 
 const PARKING_TYPES = Object.keys(PARKING_TYPE_LABELS) as ParkingType[];
 const VEHICLE_SIZES = Object.keys(VEHICLE_SIZE_LABELS) as VehicleSize[];
@@ -35,6 +40,10 @@ export default function SpaceDetail() {
   const [uploading, setUploading] = useState(false);
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [windows, setWindows] = useState<AvailabilityWindow[] | null>(null);
+  const [windowsError, setWindowsError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -54,9 +63,26 @@ export default function SpaceDetail() {
     }
   }, [id]);
 
+  const loadWindows = useCallback(async () => {
+    if (!id) return;
+    setWindowsError(null);
+    try {
+      setWindows(await api.availability.list(id));
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        setExpired(true);
+        return;
+      }
+      setWindowsError(e instanceof Error ? e.message : 'Could not load shares. Please try again.');
+    }
+  }, [id]);
+
   useEffect(() => {
-    if (!authLoading && user) void load();
-  }, [authLoading, user, load]);
+    if (!authLoading && user) {
+      void load();
+      void loadWindows();
+    }
+  }, [authLoading, user, load, loadWindows]);
 
   if (!authLoading && !user) return <Navigate to="/login" replace />;
   if (expired) return <Navigate to="/login" replace />;
@@ -157,6 +183,42 @@ export default function SpaceDetail() {
       setError(e instanceof Error ? e.message : 'Could not delete the photo. Please try again.');
     }
   }
+
+  async function removeWindow(windowId: string) {
+    if (removingId !== windowId) {
+      setRemovingId(windowId);
+      return;
+    }
+    setRemovingId(null);
+    try {
+      await api.availability.remove(windowId);
+      await loadWindows();
+      await load();
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        setExpired(true);
+        return;
+      }
+      setWindowsError(e instanceof Error ? e.message : 'Could not remove the share. Please try again.');
+    }
+  }
+
+  function handleShared() {
+    setShowShare(false);
+    void loadWindows();
+    void load();
+  }
+
+  const badgeCls: Record<DisplayState, string> = {
+    OFFLINE: 'bg-slate-200 text-slate-600',
+    PRIVATE: 'bg-emerald-100 text-emerald-800',
+    AVAILABLE: 'bg-sky-100 text-sky-800',
+    RETURNING: 'bg-amber-100 text-amber-800',
+    RESERVED: 'bg-violet-100 text-violet-800',
+  };
+
+  const liveWindow = windows?.find((w) => w.live) ?? null;
+  const upcomingWindows = (windows ?? []).filter((w) => !w.live);
 
   const inputCls =
     'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none';
@@ -327,14 +389,75 @@ export default function SpaceDetail() {
               {space.label} · {space.areaLabel}
             </h1>
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                space.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-              }`}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${badgeCls[space.displayState]}`}
             >
-              {space.active ? 'PRIVATE' : 'OFFLINE'}
+              {space.displayState}
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-600">{PARKING_TYPE_LABELS[space.parkingType]}</p>
+
+          {space.active && (
+            <button
+              onClick={() => setShowShare(true)}
+              className="mt-4 block w-full rounded-xl bg-sky-700 px-4 py-4 text-center text-lg font-bold text-white shadow-sm"
+            >
+              Share my spot
+            </button>
+          )}
+
+          <div className="mt-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Sharing</h2>
+            {windowsError && (
+              <div role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {windowsError}
+              </div>
+            )}
+            {windows === null ? (
+              <div className="mt-2 animate-pulse rounded-xl border border-slate-200 bg-white p-4" aria-label="Loading shares">
+                <div className="h-3 w-1/2 rounded bg-slate-200" />
+              </div>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {liveWindow && (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+                    <p className="text-sm font-bold text-sky-900">
+                      Available now — until {formatTime(liveWindow.endsAt)}
+                    </p>
+                    <p className="mt-1 text-sm text-sky-800">
+                      {formatRate(liveWindow.hourlyRateCents)} ·{' '}
+                      {formatRemaining(new Date(liveWindow.endsAt).getTime() - Date.now())} left ·{' '}
+                      expires automatically at your return time
+                    </p>
+                  </div>
+                )}
+                {upcomingWindows.map((w) => (
+                  <div key={w.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Shared until {formatDateTime(w.endsAt)}
+                      </p>
+                      <p className="mt-0.5 text-sm text-slate-600">{formatRate(w.hourlyRateCents)}</p>
+                    </div>
+                    <button
+                      onClick={() => void removeWindow(w.id)}
+                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                        removingId === w.id
+                          ? 'bg-red-600 text-white'
+                          : 'border border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      {removingId === w.id ? 'Tap again to remove' : 'Remove'}
+                    </button>
+                  </div>
+                ))}
+                {windows.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                    Not shared right now. Tap <strong>Share my spot</strong> when you leave.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="mt-5">
             <div className="flex items-center justify-between">
@@ -426,6 +549,16 @@ export default function SpaceDetail() {
             )}
           </div>
         </div>
+      )}
+
+      {showShare && space && (
+        <ShareSheet
+          spaceId={space.id}
+          spaceLabel={space.label}
+          onClose={() => setShowShare(false)}
+          onShared={handleShared}
+          onSessionExpired={() => setExpired(true)}
+        />
       )}
     </div>
   );

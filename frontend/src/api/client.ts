@@ -2,11 +2,13 @@ import {
   ApiError,
   ApiErrorBody,
   AuthResponse,
+  AvailabilityWindow,
   CreateSpacePayload,
   LoginPayload,
   ParkingSpace,
   RegisterPayload,
   SessionExpiredError,
+  SharePayload,
   SpacePhoto,
   UpdateSpacePayload,
   User,
@@ -202,5 +204,34 @@ export const api = {
   /** Absolute URL for a photo's bytes (the content endpoint is public). */
   photoUrl(photo: SpacePhoto): string {
     return `${BASE_URL}${photo.contentUrl}`;
+  },
+
+  availability: {
+    /**
+     * The one-tap "I'm leaving" share. The window starts now; the payload
+     * carries the return time (ISO instant) and the optional hourly price in
+     * cents (null = free).
+     */
+    share(spaceId: string, payload: SharePayload): Promise<AvailabilityWindow> {
+      return request<AvailabilityWindow>(`/spaces/${spaceId}/availability`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    /** Upcoming + currently-live shares for one of the host's spaces. */
+    list(spaceId: string): Promise<AvailabilityWindow[]> {
+      return request<AvailabilityWindow[]>(`/spaces/${spaceId}/availability`);
+    },
+
+    /** Upcoming + currently-live shares across all of the host's spaces. */
+    mine(): Promise<AvailabilityWindow[]> {
+      return request<AvailabilityWindow[]>('/availability/mine');
+    },
+
+    /** Removes a share that hasn't started yet. Idempotent (204 on retry). */
+    remove(windowId: string): Promise<void> {
+      return request<void>(`/availability/${windowId}`, { method: 'DELETE' });
+    },
   },
 };

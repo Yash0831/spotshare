@@ -158,4 +158,44 @@ describe('api client', () => {
       }),
     ).toContain('/api/v1/spaces/s1/photos/p1/content');
   });
+
+  it('availability.share posts the return time and cents price', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(201, { id: 'w1' }));
+
+    await api.availability.share('s1', {
+      returnTime: '2026-09-24T14:00:00Z',
+      hourlyRateCents: 350,
+    });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain('/spaces/s1/availability');
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(init?.body as string)).toEqual({
+      returnTime: '2026-09-24T14:00:00Z',
+      hourlyRateCents: 350,
+    });
+  });
+
+  it('availability.list and mine hit the right endpoints', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(200, [])).mockResolvedValueOnce(json(200, []));
+
+    await api.availability.list('s1');
+    await api.availability.mine();
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('/spaces/s1/availability');
+    expect(vi.mocked(fetch).mock.calls[1][0]).toContain('/availability/mine');
+  });
+
+  it('availability.remove issues a DELETE', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await api.availability.remove('w1');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain('/availability/w1');
+    expect(init?.method).toBe('DELETE');
+  });
 });
