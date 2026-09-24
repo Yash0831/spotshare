@@ -5,17 +5,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 import com.spotshare.config.AppProperties;
+import com.spotshare.config.GeocodingProperties;
 
 /**
  * SpotShare parking-sharing marketplace API.
  *
- * <p>Phase 3: parking space inventory and the signature "I'm leaving / Share My
- * Spot" flow — hosts create temporary availability windows (free or hourly,
- * min 30 minutes, auto-expiring at the return time) and spaces carry a
- * derived display state (OFFLINE / PRIVATE / AVAILABLE / RETURNING).
+ * <p>Phase 4: driver discovery — PostGIS nearby search (map + list),
+ * privacy-safe public DTOs, and Nominatim-backed geocoding behind the
+ * GeocodingProvider interface.
  */
 @SpringBootApplication
-@EnableConfigurationProperties(AppProperties.class)
+@EnableConfigurationProperties({AppProperties.class, GeocodingProperties.class})
 public class SpotshareApplication {
 
     public static void main(String[] args) {

@@ -3,8 +3,10 @@ package com.spotshare.common;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
@@ -44,6 +46,32 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body(ErrorEnvelope.of("PHOTO_TOO_LARGE",
                         "That photo is too large. Please use a photo under 5 MB.",
+                        correlationId(request)));
+    }
+
+    /**
+     * A required query/path parameter is missing (e.g. /geocode without q)
+     * — friendly 400, not a 500.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorEnvelope> handleMissingParam(
+            MissingServletRequestParameterException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorEnvelope.of("VALIDATION_ERROR",
+                        "Missing required parameter: " + ex.getParameterName() + ".",
+                        correlationId(request)));
+    }
+
+    /**
+     * A query/path parameter can't be converted (e.g. ?lat=abc) — friendly
+     * 400, not a 500.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorEnvelope> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorEnvelope.of("VALIDATION_ERROR",
+                        "Invalid value for parameter: " + ex.getName() + ".",
                         correlationId(request)));
     }
 

@@ -26,8 +26,9 @@ import com.spotshare.config.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Stateless JWT security. Public: auth endpoints, the health check, and
- * actuator health. Everything else requires a valid Bearer token; anything
+ * Stateless JWT security. Public: auth endpoints, the health check, actuator
+ * health, space photo content, and the privacy-safe discovery endpoints
+ * (search + geocode). Everything else requires a valid Bearer token; anything
  * denied returns the global error envelope (never a bare 403 page).
  */
 @Configuration
@@ -59,6 +60,12 @@ public class SecurityConfig {
                         // /api/v1/spaces/** requires the caller to be the host.
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/spaces/*/photos/*/content").permitAll()
+                        // Discovery is public: the search and geocode DTOs are
+                        // privacy-safe by construction (§11), so guests can
+                        // browse before creating an account. Reserving
+                        // (Phase 5) requires login.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/spaces/search", "/api/v1/geocode").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
