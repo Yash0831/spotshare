@@ -217,4 +217,80 @@ class AvailabilityWebSliceTest {
         mvc.perform(delete("/api/v1/availability/" + windowId))
                 .andExpect(status().isNoContent());
     }
+
+    // ------------------------------------------------------------------
+    // Return early (Phase 7)
+    // ------------------------------------------------------------------
+
+    private String returnEarlyJson(String newReturnTime) {
+        return "{\"newReturnTime\":\"%s\"}".formatted(newReturnTime);
+    }
+
+    @Test
+    void returnEarly_withoutToken_returns401() throws Exception {
+        mvc.perform(post("/api/v1/availability/" + windowId + "/return-early")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(returnEarlyJson("2030-01-01T18:00:00Z")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void returnEarly_missingNewReturnTime_returns400() throws Exception {
+        authenticate();
+
+        mvc.perform(post("/api/v1/availability/" + windowId + "/return-early")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void returnEarly_valid_returns200WithShrunkWindow() throws Exception {
+        authenticate();
+        given(availability.returnEarly(eq(hostId), eq(windowId), any()))
+                .willReturn(windowDto(true));
+
+        mvc.perform(post("/api/v1/availability/" + windowId + "/return-early")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(returnEarlyJson("2030-01-01T18:00:00Z")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(windowId.toString()))
+                .andExpect(jsonPath("$.live").value(true));
+    }
+
+    @Test
+    void returnEarly_blockedByReservation_carriesEarliestReturnInDetails() throws Exception {
+        authenticate();
+        String earliest = "2030-01-01T19:30:00Z";
+        given(availability.returnEarly(eq(hostId), eq(windowId), any()))
+                .willThrow(ApiException.unprocessable("RETURN_BLOCKED_BY_RESERVATION",
+                        "Your space is reserved until 7:30 PM. Earliest available return: 7:30 PM.",
+                        java.util.Map.of("earliestReturnTime", earliest)));
+
+        mvc.perform(post("/api/v1/availability/" + windowId + "/return-early")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(returnEarlyJson("2030-01-01T18:00:00Z")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("RETURN_BLOCKED_BY_RESERVATION"))
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("Earliest available return")))
+                .andExpect(jsonPath("$.details.earliestReturnTime").value(earliest))
+                .andExpect(jsonPath("$.correlationId").exists());
+    }
+
+    @Test
+    void returnEarly_otherUsersWindow_returns403Envelope() throws Exception {
+        authenticate();
+        given(availability.returnEarly(eq(hostId), eq(windowId), any()))
+                .willThrow(ApiException.forbidden("NOT_YOUR_WINDOW",
+                        "This share belongs to another account."));
+
+        mvc.perform(post("/api/v1/availability/" + windowId + "/return-early")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(returnEarlyJson("2030-01-01T18:00:00Z")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_YOUR_WINDOW"))
+                .andExpect(jsonPath("$.details").doesNotExist());
+    }
 }

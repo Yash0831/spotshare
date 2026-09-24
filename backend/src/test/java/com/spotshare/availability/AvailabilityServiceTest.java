@@ -11,9 +11,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,8 @@ import com.spotshare.availability.dto.ShareRequest;
 import com.spotshare.common.ApiException;
 import com.spotshare.parking.ParkingSpace;
 import com.spotshare.parking.ParkingSpaceRepository;
+import com.spotshare.reservation.ReservationRepository;
+import com.spotshare.reservation.ReservationStatus;
 import com.spotshare.user.Role;
 import com.spotshare.user.User;
 
@@ -50,6 +54,9 @@ class AvailabilityServiceTest {
     @Mock
     private ParkingSpaceRepository spaces;
 
+    @Mock
+    private ReservationRepository reservations;
+
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     private AvailabilityService service;
 
@@ -59,7 +66,7 @@ class AvailabilityServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AvailabilityService(windows, spaces, clock);
+        service = new AvailabilityService(windows, spaces, reservations, clock);
         host = new User("host@example.com", "hash", "Holly", "Host", null, Role.USER);
         stranger = new User("stranger@example.com", "hash", "Sam", "Stranger", null, Role.USER);
         space = new ParkingSpace(host);
@@ -333,5 +340,189 @@ class AvailabilityServiceTest {
         assertThat(live.isLive(now)).isTrue();
         assertThat(live.isLive(now.plusSeconds(3600))).isFalse();
         assertThat(live.isLive(now.minusSeconds(3600))).isTrue();
+    }
+
+    // ------------------------------------------------------------------
+    // Return early (Phase 7)
+    // ------------------------------------------------------------------
+
+    /** A live window [NOW-1h, NOW+2h) with no reservations parked in it. */
+    private AvailabilityWindow liveWindow() {
+        return new AvailabilityWindow(space,
+                OffsetDateTime.ofInstant(NOW.minusSeconds(3600), ZoneOffset.UTC),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(2 * 3600), ZoneOffset.UTC),
+                WindowSource.MANUAL, null, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
+    }
+
+    private void stubLiveWindow(AvailabilityWindow window) {
+        given(windows.findById(window.getId())).willReturn(Optional.of(window));
+        given(windows.save(any(AvailabilityWindow.class)))
+                .willAnswer((Answer<AvailabilityWindow>) inv -> inv.getArgument(0));
+    }
+
+    /** findById only — for rejection paths where save() must never happen. */
+    private void stubLiveWindowLookup(AvailabilityWindow window) {
+        given(windows.findById(window.getId())).willReturn(Optional.of(window));
+    }
+
+    @Test
+    void returnEarly_shrinksWindow() {
+        AvailabilityWindow window = liveWindow();
+        stubLiveWindow(window);
+        given(reservations.findLatestConfirmedDepartureInWindow(
+                any(), any(), any(), any())).willReturn(Optional.empty());
+
+        OffsetDateTime newReturn = OffsetDateTime.ofInstant(NOW.plusSeconds(3600), ZoneOffset.UTC);
+        AvailabilityWindowDto dto = service.returnEarly(host.getId(), window.getId(), newReturn);
+
+        ArgumentCaptor<AvailabilityWindow> saved = ArgumentCaptor.forClass(AvailabilityWindow.class);
+        verify(windows).save(saved.capture());
+        assertThat(saved.getValue().getEndsAt()).isEqualTo(newReturn);
+        assertThat(dto.endsAt()).isEqualTo(newReturn);
+        assertThat(dto.live()).isTrue();
+        // The service only shrinks the window — it never writes reservations.
+        verifyNoMoreInteractions(reservations);
+    }
+
+    @Test
+    void returnEarly_unknownWindow_notFound() {
+        UUID unknown = UUID.randomUUID();
+        given(windows.findById(unknown)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.returnEarly(host.getId(), unknown,
+                OffsetDateTime.ofInstant(NOW.plusSeconds(3600), ZoneOffset.UTC)))
+                .satisfies(t -> assertApiException(t, HttpStatus.NOT_FOUND, "WINDOW_NOT_FOUND"));
+    }
+
+    @Test
+    void returnEarly_otherAccount_forbidden() {
+        AvailabilityWindow window = liveWindow();
+        given(windows.findById(window.getId())).willReturn(Optional.of(window));
+
+        assertThatThrownBy(() -> service.returnEarly(stranger.getId(), window.getId(),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(3600), ZoneOffset.UTC)))
+                .satisfies(t -> assertApiException(t, HttpStatus.FORBIDDEN, "NOT_YOUR_WINDOW"));
+        verify(windows, never()).save(any());
+    }
+
+    @Test
+    void returnEarly_endedWindow_isNoOpSuccess() {
+        AvailabilityWindow ended = new AvailabilityWindow(space,
+                OffsetDateTime.ofInstant(NOW.minusSeconds(3 * 3600), ZoneOffset.UTC),
+                OffsetDateTime.ofInstant(NOW.minusSeconds(3600), ZoneOffset.UTC),
+                WindowSource.MANUAL, null, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
+        given(windows.findById(ended.getId())).willReturn(Optional.of(ended));
+
+        // Idempotent: an ended share simply reports its state — nothing saved.
+        AvailabilityWindowDto dto = service.returnEarly(host.getId(), ended.getId(),
+                OffsetDateTime.ofInstant(NOW.minusSeconds(2 * 3600), ZoneOffset.UTC));
+
+        assertThat(dto.endsAt()).isEqualTo(ended.getEndsAt());
+        assertThat(dto.live()).isFalse();
+        verify(windows, never()).save(any());
+    }
+
+    @Test
+    void returnEarly_pastReturn_rejected() {
+        AvailabilityWindow window = liveWindow();
+        stubLiveWindowLookup(window);
+
+        assertThatThrownBy(() -> service.returnEarly(host.getId(), window.getId(),
+                OffsetDateTime.ofInstant(NOW.minusSeconds(3600), ZoneOffset.UTC)))
+                .satisfies(t -> assertApiException(t, HttpStatus.UNPROCESSABLE_ENTITY,
+                        "INVALID_RETURN_TIME"));
+        verify(windows, never()).save(any());
+    }
+
+    @Test
+    void returnEarly_notEarlierThanCurrentEnd_rejected() {
+        AvailabilityWindow window = liveWindow();
+        stubLiveWindowLookup(window);
+
+        // Equal to the current end is not "early" — the action is honest.
+        assertThatThrownBy(() -> service.returnEarly(host.getId(), window.getId(),
+                window.getEndsAt()))
+                .satisfies(t -> assertApiException(t, HttpStatus.UNPROCESSABLE_ENTITY,
+                        "NOT_EARLY_RETURN"));
+        assertThatThrownBy(() -> service.returnEarly(host.getId(), window.getId(),
+                window.getEndsAt().plusMinutes(30)))
+                .satisfies(t -> assertApiException(t, HttpStatus.UNPROCESSABLE_ENTITY,
+                        "NOT_EARLY_RETURN"));
+        verify(windows, never()).save(any());
+    }
+
+    @Test
+    void returnEarly_shorterThanMinimum_rejected() {
+        AvailabilityWindow window = new AvailabilityWindow(space,
+                OffsetDateTime.ofInstant(NOW.minusSeconds(600), ZoneOffset.UTC),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(2 * 3600), ZoneOffset.UTC),
+                WindowSource.MANUAL, null, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
+        stubLiveWindowLookup(window);
+
+        // 15 minutes from the window start — below the 30-minute minimum.
+        assertThatThrownBy(() -> service.returnEarly(host.getId(), window.getId(),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(300), ZoneOffset.UTC)))
+                .satisfies(t -> assertApiException(t, HttpStatus.UNPROCESSABLE_ENTITY,
+                        "WINDOW_TOO_SHORT"));
+        verify(windows, never()).save(any());
+    }
+
+    @Test
+    void returnEarly_confirmedReservationBlocks_carriesEarliestReturn() {
+        AvailabilityWindow window = liveWindow();
+        stubLiveWindowLookup(window);
+        // A driver parked until NOW+90min; the host asks for NOW+60min.
+        OffsetDateTime driverDeparture =
+                OffsetDateTime.ofInstant(NOW.plusSeconds(90 * 60), ZoneOffset.UTC);
+        given(reservations.findLatestConfirmedDepartureInWindow(
+                eq(space.getId()), eq(ReservationStatus.CONFIRMED),
+                eq(window.getStartsAt()), eq(window.getEndsAt())))
+                .willReturn(Optional.of(driverDeparture));
+
+        assertThatThrownBy(() -> service.returnEarly(host.getId(), window.getId(),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(60 * 60), ZoneOffset.UTC)))
+                .satisfies(t -> {
+                    assertApiException(t, HttpStatus.UNPROCESSABLE_ENTITY,
+                            "RETURN_BLOCKED_BY_RESERVATION");
+                    ApiException ex = (ApiException) t;
+                    assertThat(ex.getMessage()).contains("Earliest available return");
+                    assertThat(ex.getDetails())
+                            .containsEntry("earliestReturnTime", driverDeparture.toString());
+                });
+        verify(windows, never()).save(any());
+    }
+
+    @Test
+    void returnEarly_exactlyAtReservationEnd_allowed() {
+        AvailabilityWindow window = liveWindow();
+        stubLiveWindow(window);
+        // Half-open [arrival, departure): ending exactly when the driver
+        // leaves is fine — the periods don't overlap.
+        OffsetDateTime driverDeparture =
+                OffsetDateTime.ofInstant(NOW.plusSeconds(60 * 60), ZoneOffset.UTC);
+        given(reservations.findLatestConfirmedDepartureInWindow(
+                any(), any(), any(), any())).willReturn(Optional.of(driverDeparture));
+
+        AvailabilityWindowDto dto = service.returnEarly(host.getId(), window.getId(),
+                driverDeparture);
+
+        assertThat(dto.endsAt()).isEqualTo(driverDeparture);
+        verify(windows).save(any(AvailabilityWindow.class));
+    }
+
+    @Test
+    void returnEarly_cancelledReservationsDoNotBlock() {
+        AvailabilityWindow window = liveWindow();
+        stubLiveWindow(window);
+        // Only cancelled reservations in the window: the repository query
+        // filters on CONFIRMED, so it reports nothing parked.
+        given(reservations.findLatestConfirmedDepartureInWindow(
+                any(), any(), any(), any())).willReturn(Optional.empty());
+
+        OffsetDateTime newReturn = OffsetDateTime.ofInstant(NOW.plusSeconds(3600), ZoneOffset.UTC);
+        AvailabilityWindowDto dto = service.returnEarly(host.getId(), window.getId(), newReturn);
+
+        assertThat(dto.endsAt()).isEqualTo(newReturn);
+        verify(windows).save(any(AvailabilityWindow.class));
     }
 }

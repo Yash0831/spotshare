@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.spotshare.auth.AuthenticatedUser;
 import com.spotshare.availability.dto.AvailabilityWindowDto;
+import com.spotshare.availability.dto.ReturnEarlyRequest;
 import com.spotshare.availability.dto.ShareRequest;
 
 import jakarta.validation.Valid;
@@ -62,6 +63,20 @@ public class AvailabilityController {
     @GetMapping("/availability/mine")
     public List<AvailabilityWindowDto> mine(@AuthenticationPrincipal AuthenticatedUser principal) {
         return availability.myWindows(principal.id());
+    }
+
+    /**
+     * Return early: the host moves their return time sooner and the window
+     * shrinks. Confirmed reservations are never silently cancelled — if a
+     * driver is parked past the requested return, the error carries
+     * {@code earliestReturnTime} in its details.
+     */
+    @PostMapping("/availability/{windowId}/return-early")
+    public AvailabilityWindowDto returnEarly(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable("windowId") UUID windowId,
+            @Valid @RequestBody ReturnEarlyRequest req) {
+        return availability.returnEarly(principal.id(), windowId, req.newReturnTime());
     }
 
     /**

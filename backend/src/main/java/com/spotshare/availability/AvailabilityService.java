@@ -3,7 +3,10 @@ package com.spotshare.availability;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -15,6 +18,8 @@ import com.spotshare.availability.dto.ShareRequest;
 import com.spotshare.common.ApiException;
 import com.spotshare.parking.ParkingSpace;
 import com.spotshare.parking.ParkingSpaceRepository;
+import com.spotshare.reservation.ReservationRepository;
+import com.spotshare.reservation.ReservationStatus;
 
 /**
  * Temporary availability — the signature "I'm leaving / Share My Spot" flow.
@@ -38,15 +43,24 @@ public class AvailabilityService {
     /** Sanity cap: $100/hour. Integer cents, never floating point. */
     public static final int MAX_HOURLY_RATE_CENTS = 10_000;
 
+    /** "7:30 PM" — the host-readable time in the timestamp's own offset. */
+    private static final DateTimeFormatter SHORT_TIME = DateTimeFormatter.ofPattern("h:mm a");
+
+    /** Grace for clock skew when the host taps "I'm back now". */
+    private static final Duration PAST_GRACE = Duration.ofSeconds(60);
+
     private final AvailabilityWindowRepository windows;
     private final ParkingSpaceRepository spaces;
+    private final ReservationRepository reservations;
     private final Clock clock;
 
     public AvailabilityService(AvailabilityWindowRepository windows,
                                ParkingSpaceRepository spaces,
+                               ReservationRepository reservations,
                                Clock clock) {
         this.windows = windows;
         this.spaces = spaces;
+        this.reservations = reservations;
         this.clock = clock;
     }
 
@@ -128,6 +142,73 @@ public class AvailabilityService {
                     + "It ends automatically at your return time.");
         }
         windows.delete(window);
+    }
+
+    /**
+     * Return early (spec §7): the host moves their return time sooner. The
+     * window simply shrinks — confirmed reservations keep their exact
+     * periods and are never silently cancelled.
+     *
+     * <p>Validation, in order:
+     * <ol>
+     *   <li>the window exists (404) and belongs to the host (403);</li>
+     *   <li>an already-ended window is a no-op success (idempotent);</li>
+     *   <li>the new return is not in the past (a 60-second grace covers
+     *       clock skew when the host taps "I'm back now");</li>
+     *   <li>the new return is strictly earlier than the current end;</li>
+     *   <li>the window keeps its 30-minute minimum length;</li>
+     *   <li>the new return is not earlier than the latest CONFIRMED
+     *       reservation's departure — a parked driver is never cut off.
+     *       Rejection carries {@code earliestReturnTime} in the error
+     *       details so the UI can show exactly when the host may return.
+     *       Ending exactly when a reservation ends is allowed: the window
+     *       is half-open {@code [startsAt, endsAt)}.</li>
+     * </ol>
+     */
+    @Transactional
+    public AvailabilityWindowDto returnEarly(UUID hostId, UUID windowId,
+                                             OffsetDateTime newReturn) {
+        AvailabilityWindow window = windows.findById(windowId)
+                .orElseThrow(() -> ApiException.notFound("WINDOW_NOT_FOUND",
+                        "We couldn't find that share."));
+        if (!window.getSpace().getHost().getId().equals(hostId)) {
+            throw ApiException.forbidden("NOT_YOUR_WINDOW",
+                    "This share belongs to another account.");
+        }
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (!now.isBefore(window.getEndsAt())) {
+            // Already over — nothing to do; idempotent no-op success.
+            return toDto(window, now);
+        }
+        if (newReturn == null || newReturn.isBefore(now.minus(PAST_GRACE))) {
+            throw ApiException.unprocessable("INVALID_RETURN_TIME",
+                    "Your new return time must be in the future.");
+        }
+        if (!newReturn.isBefore(window.getEndsAt())) {
+            throw ApiException.unprocessable("NOT_EARLY_RETURN",
+                    "That's not earlier than your current return time ("
+                    + SHORT_TIME.format(window.getEndsAt()) + ").");
+        }
+        if (Duration.between(window.getStartsAt(), newReturn).toMinutes()
+                < MIN_WINDOW_MINUTES) {
+            throw ApiException.unprocessable("WINDOW_TOO_SHORT",
+                    "Shares need to be at least 30 minutes long.");
+        }
+        Optional<OffsetDateTime> latestDeparture =
+                reservations.findLatestConfirmedDepartureInWindow(
+                        window.getSpace().getId(), ReservationStatus.CONFIRMED,
+                        window.getStartsAt(), window.getEndsAt());
+        if (latestDeparture.isPresent()
+                && newReturn.isBefore(latestDeparture.get())) {
+            OffsetDateTime earliest = latestDeparture.get();
+            String when = SHORT_TIME.format(earliest);
+            throw ApiException.unprocessable("RETURN_BLOCKED_BY_RESERVATION",
+                    "Your space is reserved until " + when
+                    + ". Earliest available return: " + when + ".",
+                    Map.of("earliestReturnTime", earliest.toString()));
+        }
+        window.setEndsAt(newReturn);
+        return toDto(windows.save(window), now);
     }
 
     /** 404 when the space doesn't exist; 403 when it belongs to someone else. */

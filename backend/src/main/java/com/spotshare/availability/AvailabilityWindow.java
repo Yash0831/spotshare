@@ -93,6 +93,15 @@ public class AvailabilityWindow {
         return endsAt;
     }
 
+    /**
+     * Moves the host's return time. Used only by return-early (Phase 7):
+     * the window's end is shrunk, never extended, and confirmed
+     * reservations are never touched.
+     */
+    public void setEndsAt(OffsetDateTime endsAt) {
+        this.endsAt = endsAt;
+    }
+
     public WindowSource getSource() {
         return source;
     }

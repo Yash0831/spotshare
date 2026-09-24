@@ -75,6 +75,22 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
                       @Param("to") ReservationStatus to);
 
     /**
+     * Return-early protection (spec §7): the latest departure among
+     * CONFIRMED reservations overlapping the window's half-open period.
+     * Cancelled/completed reservations are excluded, so they never block
+     * an early return. Empty when nothing is parked.
+     */
+    @Query("select max(r.departure) from Reservation r"
+            + " where r.space.id = :spaceId"
+            + " and r.status = :confirmed"
+            + " and r.arrival < :windowEnd and r.departure > :windowStart")
+    Optional<OffsetDateTime> findLatestConfirmedDepartureInWindow(
+            @Param("spaceId") UUID spaceId,
+            @Param("confirmed") ReservationStatus confirmed,
+            @Param("windowStart") OffsetDateTime windowStart,
+            @Param("windowEnd") OffsetDateTime windowEnd);
+
+    /**
      * One day's reservations for a space, ordered by arrival. Used by the
      * host arrivals view (spec §12). The driver is fetched here; the DTO
      * reduces them to first name + last initial, per the privacy rules

@@ -27,7 +27,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex,
                                                    HttpServletRequest request) {
         return ResponseEntity.status(ex.getStatus())
-                .body(ErrorEnvelope.of(ex.getCode(), ex.getMessage(), correlationId(request)));
+                .body(ErrorEnvelope.of(ex.getCode(), ex.getMessage(),
+                        correlationId(request), ex.getDetails()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
