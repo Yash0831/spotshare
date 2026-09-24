@@ -14,7 +14,31 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 8 — Commute mode, implemented and tested.** What works today:
+**Phase 9 — Vacation mode, implemented and tested.** What works today:
+
+Everything from Phase 8, plus the host's whole-trip share:
+
+- **Vacation mode:** on the space page, the host taps **\"+ Going on vacation?
+  Share for the whole trip\"**, picks a start and an end date-time, and a price
+  (free or hourly). The form shows a live trip summary (\"3 days 15 hours\").
+  The server creates one multi-day `availability_windows` row
+  (source=`VACATION`) — e.g. Friday 6:00 PM → Monday 9:00 AM. Validation
+  mirrors manual shares: start in the future, end after start, at least
+  30 minutes (no maximum — a two-week trip is legitimate), free or
+  $0.01–$100/hr, and no overlap with existing shares (adjacent allowed)
+- **Same rules as everything else:** drivers reserve sub-periods inside the
+  vacation window with the usual containment rule — multiple reservations can
+  cover different parts of one long window. The live share shows an \"On
+  vacation\" state with an **\"I'm back\"** button: that's the existing
+  return-early path, so a parked driver is never silently cut off (a blocked
+  return answers `RETURN_BLOCKED_BY_RESERVATION` with the exact
+  `earliestReturnTime`)
+- API: `POST /api/v1/spaces/{id}/vacation` (201) with
+  `{startDateTime, endDateTime, hourlyRateCents}`
+- **No schema changes:** the V3 `source` check constraint already accepted
+  `VACATION` — vacation windows are ordinary windows from day one
+
+**Phase 8 — Commute mode, implemented and tested.** Before that:
 
 Everything from Phase 7, plus the host's weekly pattern:
 
@@ -373,6 +397,35 @@ curl -s -X POST localhost:8080/api/v1/commute-schedules/$SCHED/pause \
 # end before start → 422 INVALID_SCHEDULE; under 30 min → 422 SCHEDULE_TOO_SHORT;
 # bad rate → 422 INVALID_PRICE; bad zone → 422 INVALID_TIMEZONE;
 # someone else's space → 403 NOT_YOUR_SPACE; deactivated space → 410 SPACE_INACTIVE.
+```
+
+## Manual vacation-mode check (curl)
+
+```bash
+# Share the whole trip: Friday 6 PM → Monday 9 AM, $3/hr
+# (both datetimes are ISO instants; hourlyRateCents null = free)
+curl -s -X POST localhost:8080/api/v1/spaces/$SPACE/vacation \
+  -H "Authorization: Bearer $HOST_ACCESS" -H 'Content-Type: application/json' \
+  -d '{"startDateTime":"2026-09-25T18:00:00Z","endDateTime":"2026-09-28T09:00:00Z","hourlyRateCents":300}'
+# → 201 with the window ("source":"VACATION")
+
+# A driver reserves a sub-period inside the vacation window — the usual booking
+# rules apply (see "Manual reservation check"); multiple reservations can
+# cover different parts of the same long window.
+
+# End the vacation early: the return-early endpoint shrinks the window.
+# A parked driver blocks it with 422 RETURN_BLOCKED_BY_RESERVATION
+# ("Earliest available return: ..." + details.earliestReturnTime) — the driver
+# is never silently cut off.
+curl -s -X POST localhost:8080/api/v1/availability/$WINDOW/return-early \
+  -H "Authorization: Bearer $HOST_ACCESS" -H 'Content-Type: application/json' \
+  -d '{"newReturnTime":"2026-09-26T12:00:00Z"}'
+
+# Start in the past → 422 INVALID_START_TIME; end before start → 422
+# INVALID_END_TIME; under 30 min → 422 WINDOW_TOO_SHORT; bad rate → 422
+# INVALID_PRICE; overlap with an existing share → 409 OVERLAPPING_WINDOW;
+# someone else's space → 403 NOT_YOUR_SPACE; deactivated space → 410
+# SPACE_INACTIVE.
 ```
 
 ## Configuration
