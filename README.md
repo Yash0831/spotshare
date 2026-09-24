@@ -14,55 +14,68 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 4 — Discovery, implemented and tested.** What works today:
+**Phase 5 — Reservations, implemented and tested.** What works today:
 
-- Everything from Phase 3, plus public nearby search:
-  `GET /api/v1/spaces/search?lat=&lng=&arrival=&departure=` with optional
-  `radiusMiles` (0.5–25, default 3), `maxPrice` (dollars; free shares always
-  match), `covered`, `evCharging`, `vehicleSize`, and `page`/`size` pagination
-- PostGIS search: `ST_DWithin` radius filtering, KNN (`<->`) nearest-first
-  ordering, and a **complete-period containment** rule — only windows with
-  `starts_at <= arrival AND ends_at >= departure` match; when several windows
-  contain the period, the cheapest wins
-- **Privacy by construction:** the public DTO carries no exact address, no
-  space label/number, no parking instructions, and no host contact — only an
-  approximate location (coordinates rounded to ~110 m + area label), the host's
-  first name + last initial, price, distance, photos, and the containing window.
-  The exact address is revealed only after a reservation (Phase 5)
-- `GET /api/v1/geocode?q=` — address lookup via Nominatim (OpenStreetMap),
-  behind a `GeocodingProvider` interface with a configurable User-Agent,
-  US-scoped, ~1 req/s self-throttling, and a friendly `GEOCODER_UNAVAILABLE`
-  503 when the provider can't be reached. Set `NOMINATIM_USER_AGENT` (see
-  `.env.example`) to something identifying before any real traffic — the
-  Nominatim usage policy requires it
-- React: **Explore** (destination autocomplete + date/time + filters → map
-  with price pins + result list → public detail page), **Park Now**
-  (geolocation → immediate 2-hour search, with manual destination fallback
-  when location is denied/unavailable), bottom tab bar
-  (Explore · Park Now · My Parking · Profile), Leaflet + OpenStreetMap tiles
-  (no API keys)
-- ⚠️ **Reservation conflicts are NOT filtered yet.** A share that will be
-  booked in Phase 5 can still appear in Phase 4 results. Conflict filtering
-  arrives with reservations in Phase 5 — this is a known, documented gap,
-  not an oversight.
+- Everything from Phase 4, plus reservations:
+  `POST /api/v1/reservations` with `spaceId`, `arrival`, `departure`
+  (all times are half-open `[arrival, departure)` — an arrival exactly at
+  another reservation's departure is fine) and an optional
+  `Idempotency-Key` header
+- Booking rules: the period must sit inside a single availability window,
+  the space must be active, and you can't book your own space. Arrival gets a
+  60-second clock-skew grace against "in the past" validation. No payment is
+  collected — this is beta; the reservation holds the spot
+- Pricing: total is prorated from the host's hourly rate with `HALF_UP`
+  rounding to the cent (the rate is snapshotted at booking time); free
+  shares book for $0. Confirmation codes look like `SP-K84D2`
+- Double-booking prevention (three layers): a per-space PostgreSQL advisory
+  transaction lock serializes concurrent attempts, an application-level
+  overlap check, and a GiST exclusion constraint backstop
+  (`EXCLUDE USING gist (space_id WITH =, period WITH &&) WHERE (status =
+  'CONFIRMED')`) — so two overlapping requests for one space yield exactly
+  one booking, and the loser gets a friendly 409 `SPACE_JUST_RESERVED`,
+  never raw SQL
+- Idempotency: one stable `Idempotency-Key` per driver; a repeat POST with
+  the same key returns the original reservation (`created=false`), and a
+  race between two concurrent same-key requests returns the winner's
+  reservation — never a duplicate
+- Cancellation: a driver can cancel an upcoming reservation
+  (`POST /api/v1/reservations/{id}/cancel`); cancelling again returns the same
+  cancelled reservation (idempotent). A cancelled period becomes bookable
+  again; only `CONFIRMED` reservations block overlaps
+- **Privacy by construction:** reservation lists and summaries never include
+  the exact address, space label, or parking instructions. Those appear only
+  in the authorized detail response (`GET /api/v1/reservations/{id}`) for
+  the driver or the host
+- Discovery now excludes spaces with a conflicting confirmed reservation —
+  the gap documented in Phase 4 is closed
+- React: **Reserve** page (arrival/departure pickers constrained to the host
+  window, live prorated estimate, double-submit guard, stable idempotency
+  key across retries, "Beta — no payment is collected. Your reservation
+  holds the spot." notice), **My Reservations** (upcoming + past, address
+  withheld in summaries), reservation **detail** (confirmation code, exact
+  address, label, instructions, cancel), and a fifth bottom-tab ("Reserved")
+  alongside Explore, Park Now, My Parking, Profile
 
-What does **not** exist yet: reservations, payments — those are later
-phases. Nothing is deployed; there are no real users.
+What does **not** exist yet: payments — those are later phases. Nothing is
+deployed; there are no real users.
 
-**Verification note:** no new migrations in Phase 4. The native PostGIS
-search SQL was executed against real PostgreSQL 16 + PostGIS 3 on a scratch
-database with the V1–V3 schema: radius filtering, complete-period containment
-(partial windows excluded), cheapest-window selection, `maxPrice`
-(including free shares matching), covered/EV/vehicle-size filters, and
-nearest-first ordering all verified against seeded data. The backend suite is
-green (96 tests: unit + MockMvc + web slices + privacy allowlist); the
-frontend suite is green (58 tests, including a real Leaflet map render in
-jsdom). The database-backed integration tests run where a database is
-reachable from the JVM — they abort cleanly in sandboxes that block database
-connections. Docker Compose cannot run in this sandbox, so live boot, real
-Nominatim calls, and the curl walkthroughs have not been executed here; run
-them wherever you have Docker/a local Postgres. No visual map verification
-was performed in this sandbox.
+**Verification note:** V1–V4 migrations applied cleanly against real
+PostgreSQL 16.15 + PostGIS 3.4.2, and the exclusion constraint was proven
+with two concurrent `psql` sessions: session B's overlapping insert blocked
+while session A held its transaction, then failed with
+`excl_reservations_no_overlap` once A committed — exactly one booking
+survived. Adjacent periods, cancelled-period re-booking, and same-period
+bookings on a different space all succeed. The backend suite is green
+(136 tests: unit + MockMvc + web slices); the frontend suite is green
+(75 tests). The database-backed integration tests run where a database is
+reachable from the JVM — they abort cleanly in sandboxes that block JVM
+database connections, so the live Java concurrency test did not execute
+here; the equivalent proof was done with `psql` instead. Docker Compose
+cannot run in this sandbox, so live boot, real Nominatim calls, and the
+curl walkthroughs have not been executed here; run them wherever you have
+Docker/a local Postgres. No visual map verification was performed in this
+sandbox.
 
 Product spec: `docs/v1-spec.md`.
 
@@ -169,6 +182,34 @@ curl -s localhost:8080/api/v1/availability/mine -H "Authorization: Bearer $ACCES
 # Remove a share that hasn't started yet (idempotent; replace $WINDOW)
 curl -s -X DELETE localhost:8080/api/v1/availability/$WINDOW -H "Authorization: Bearer $ACCESS"
 # → 204; shares end themselves at the return time — no scheduled job exists
+```
+
+## Manual reservation check (curl)
+
+```bash
+# Reserve (replace $ACCESS and $SPACE; the period must sit inside a shared window)
+# Arrival has a 60-second clock-skew grace against "in the past"
+curl -s -X POST localhost:8080/api/v1/reservations \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
+  -d "{\"spaceId\":\"$SPACE\",\"arrival\":\"$(date -u -d '+1 hour' +%Y-%m-%dT%H:%M:%SZ)\",\"departure\":\"$(date -u -d '+3 hours' +%Y-%m-%dT%H:%M:%SZ)\"}"
+# → 201 with the reservation + confirmation code (e.g. SP-K84D2); total is
+#   prorated from the host's hourly rate (free shares book for $0)
+# → 409 SPACE_JUST_RESERVED if someone booked it first; a repeat POST with
+#   the same Idempotency-Key returns the original reservation
+
+# My reservations (upcoming + past; summaries omit the exact address)
+curl -s localhost:8080/api/v1/reservations/mine -H "Authorization: Bearer $ACCESS"
+# ?filter=upcoming|active|past also supported
+
+# Detail (driver or host only; exact address, space label, and host
+# instructions are revealed here and nowhere else)
+curl -s localhost:8080/api/v1/reservations/$RES -H "Authorization: Bearer $ACCESS"
+
+# Cancel an upcoming reservation (idempotent; replace $RES)
+curl -s -X POST localhost:8080/api/v1/reservations/$RES/cancel -H "Authorization: Bearer $ACCESS"
+# → 200 with the cancelled reservation; cancelling again returns the same
+#   state, and the period becomes bookable again
 ```
 
 ## Configuration
