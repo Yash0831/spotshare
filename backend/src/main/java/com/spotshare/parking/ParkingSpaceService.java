@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.spotshare.availability.AvailabilityWindow;
+import com.spotshare.availability.AvailabilityWindowRepository;
+import com.spotshare.availability.DisplayState;
 import com.spotshare.common.ApiException;
 import com.spotshare.parking.dto.CreateSpaceRequest;
 import com.spotshare.parking.dto.PhotoDto;
@@ -38,15 +41,18 @@ public class ParkingSpaceService {
     private final ParkingSpaceRepository spaces;
     private final ParkingPhotoRepository photos;
     private final UserRepository users;
+    private final AvailabilityWindowRepository availability;
     private final Clock clock;
 
     public ParkingSpaceService(ParkingSpaceRepository spaces,
                                ParkingPhotoRepository photos,
                                UserRepository users,
+                               AvailabilityWindowRepository availability,
                                Clock clock) {
         this.spaces = spaces;
         this.photos = photos;
         this.users = users;
+        this.availability = availability;
         this.clock = clock;
     }
 
@@ -214,6 +220,7 @@ public class ParkingSpaceService {
         List<VehicleSize> sizes = Arrays.stream(space.getVehicleSizes())
                 .map(VehicleSize::valueOf)
                 .collect(Collectors.toList());
+        OffsetDateTime now = OffsetDateTime.now(clock);
         return new SpaceDetailDto(
                 spaceId,
                 space.getHost().getId(),
@@ -237,7 +244,30 @@ public class ParkingSpaceService {
                 space.isActive(),
                 photoDtos,
                 space.getCreatedAt(),
-                space.getUpdatedAt());
+                space.getUpdatedAt(),
+                displayState(space, now));
+    }
+
+    /**
+     * The user-facing state, derived at read time (never stored). In Phase 3
+     * a live window means AVAILABLE (no reservations exist yet); RESERVED
+     * arrives with Phase 5.
+     */
+    private DisplayState displayState(ParkingSpace space, OffsetDateTime now) {
+        if (!space.isActive()) {
+            return DisplayState.OFFLINE;
+        }
+        List<AvailabilityWindow> live = availability.findLive(space.getId(), now);
+        if (live.isEmpty()) {
+            return DisplayState.PRIVATE;
+        }
+        // Overlaps are rejected at share time, so a space has at most one
+        // live window.
+        AvailabilityWindow current = live.get(0);
+        if (!current.getEndsAt().minusMinutes(30).isAfter(now)) {
+            return DisplayState.RETURNING;
+        }
+        return DisplayState.AVAILABLE;
     }
 
     private PhotoDto toPhotoDto(UUID spaceId, ParkingPhoto photo) {

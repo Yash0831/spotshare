@@ -2,6 +2,7 @@ package com.spotshare.parking;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,10 @@ import org.mockito.stubbing.Answer;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.spotshare.availability.AvailabilityWindow;
+import com.spotshare.availability.AvailabilityWindowRepository;
+import com.spotshare.availability.DisplayState;
+import com.spotshare.availability.WindowSource;
 import com.spotshare.common.ApiException;
 import com.spotshare.parking.dto.CreateSpaceRequest;
 import com.spotshare.parking.dto.SpaceDetailDto;
@@ -50,6 +55,9 @@ class ParkingSpaceServiceTest {
     @Mock
     private UserRepository users;
 
+    @Mock
+    private AvailabilityWindowRepository availability;
+
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     private ParkingSpaceService service;
 
@@ -58,7 +66,7 @@ class ParkingSpaceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ParkingSpaceService(spaces, photos, users, clock);
+        service = new ParkingSpaceService(spaces, photos, users, availability, clock);
         host = new User("host@example.com", "hash", "Holly", "Host", null, Role.USER);
         stranger = new User("stranger@example.com", "hash", "Sam", "Stranger", null, Role.USER);
     }
@@ -243,5 +251,60 @@ class ParkingSpaceServiceTest {
         assertThat(dto.contentType()).isEqualTo("image/jpeg");
         assertThat(dto.sortOrder()).isEqualTo(2);
         assertThat(dto.contentUrl()).contains(space.getId().toString());
+    }
+
+    @Test
+    void getSpace_withLiveWindow_reportsAvailable() {
+        ParkingSpace space = existingSpace(host);
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+        AvailabilityWindow live = new AvailabilityWindow(space,
+                OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(2 * 3600), ZoneOffset.UTC),
+                WindowSource.MANUAL, null, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
+        given(availability.findLive(space.getId(), OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC)))
+                .willReturn(List.of(live));
+
+        SpaceDetailDto dto = service.getSpace(host.getId(), space.getId());
+
+        assertThat(dto.displayState()).isEqualTo(DisplayState.AVAILABLE);
+    }
+
+    @Test
+    void getSpace_windowEndingSoon_reportsReturning() {
+        ParkingSpace space = existingSpace(host);
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+        AvailabilityWindow ending = new AvailabilityWindow(space,
+                OffsetDateTime.ofInstant(NOW.minusSeconds(3600), ZoneOffset.UTC),
+                OffsetDateTime.ofInstant(NOW.plusSeconds(20 * 60), ZoneOffset.UTC),
+                WindowSource.MANUAL, 300, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
+        given(availability.findLive(space.getId(), OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC)))
+                .willReturn(List.of(ending));
+
+        SpaceDetailDto dto = service.getSpace(host.getId(), space.getId());
+
+        assertThat(dto.displayState()).isEqualTo(DisplayState.RETURNING);
+    }
+
+    @Test
+    void getSpace_withoutWindows_reportsPrivate() {
+        ParkingSpace space = existingSpace(host);
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+        given(availability.findLive(any(), any())).willReturn(List.of());
+
+        SpaceDetailDto dto = service.getSpace(host.getId(), space.getId());
+
+        assertThat(dto.displayState()).isEqualTo(DisplayState.PRIVATE);
+    }
+
+    @Test
+    void getSpace_inactive_reportsOffline() {
+        ParkingSpace space = existingSpace(host);
+        space.setActive(false);
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+
+        SpaceDetailDto dto = service.getSpace(host.getId(), space.getId());
+
+        assertThat(dto.displayState()).isEqualTo(DisplayState.OFFLINE);
+        verify(availability, never()).findLive(any(), any());
     }
 }
