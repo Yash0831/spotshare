@@ -1,8 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import BottomNav from './components/BottomNav';
+import Explore from './pages/Explore';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import MyParking from './pages/MyParking';
+import ParkNow from './pages/ParkNow';
+import Profile from './pages/Profile';
+import PublicSpaceDetail from './pages/PublicSpaceDetail';
 import Register from './pages/Register';
 import SpaceDetail from './pages/SpaceDetail';
 import SpaceWizard from './pages/SpaceWizard';
@@ -17,6 +22,29 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   return user ? children : <Navigate to="/login" replace />;
+}
+
+/**
+ * Phone-style shell for tabbed pages without their own container: centers
+ * the content, pads it clear of the bottom nav, and renders the nav.
+ */
+function TabShell({ children }: { children: JSX.Element }) {
+  return (
+    <div className="mx-auto w-full max-w-md px-4 pb-24 pt-4">
+      {children}
+      <BottomNav />
+    </div>
+  );
+}
+
+/** For tabbed pages that already have their own container: nav only. */
+function TabNav() {
+  return (
+    <>
+      <div className="h-20" aria-hidden />
+      <BottomNav />
+    </>
+  );
 }
 
 export default function App() {
@@ -42,11 +70,40 @@ export default function App() {
                 </RequireGuest>
               }
             />
+            {/* Public discovery — no login required */}
+            <Route
+              path="/explore"
+              element={
+                <TabShell>
+                  <Explore />
+                </TabShell>
+              }
+            />
+            <Route
+              path="/park-now"
+              element={
+                <TabShell>
+                  <ParkNow />
+                </TabShell>
+              }
+            />
+            <Route
+              path="/spaces/:id"
+              element={
+                <TabShell>
+                  <PublicSpaceDetail />
+                </TabShell>
+              }
+            />
+            {/* Host pages — login required */}
             <Route
               path="/parking"
               element={
                 <RequireAuth>
-                  <MyParking />
+                  <>
+                    <MyParking />
+                    <TabNav />
+                  </>
                 </RequireAuth>
               }
             />
@@ -63,6 +120,16 @@ export default function App() {
               element={
                 <RequireAuth>
                   <SpaceDetail />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <RequireAuth>
+                  <TabShell>
+                    <Profile />
+                  </TabShell>
                 </RequireAuth>
               }
             />

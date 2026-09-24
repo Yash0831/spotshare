@@ -1,3 +1,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Price pins on the discovery map: white pill with the hourly rate. */
+.price-pin {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #0369a1;
+  color: #0c4a6e;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.price-pin-selected {
+  background: #0369a1;
+  border-color: #0c4a6e;
+  color: #ffffff;
+}
+
+/* Keep the tab bar above Leaflet's panes and controls. */
+.bottom-nav {
+  z-index: 1200;
+}
+
+/* Rounded map corners inside cards. */
+.leaflet-container {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}

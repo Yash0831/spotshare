@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 /**
- * Phase 1 home screen: brand line + account state. The parking workflows
- * (search, share, reservations) arrive in later phases.
+ * Home screen: brand line + quick actions. Discovery (Explore, Park Now) is
+ * public; hosting and account live behind login.
  */
 export default function Home() {
   const { user, loading, logout } = useAuth();
@@ -21,15 +21,36 @@ export default function Home() {
       <p className="text-sm font-semibold uppercase tracking-widest text-sky-700">SpotShare</p>
       <h1 className="mt-2 text-3xl font-bold text-slate-900">Borrow a parking spot.</h1>
       <p className="mt-2 text-slate-600">
-        Neighbors share the spots they're not using — right when you need one.
+        Neighbors share the spots they&apos;re not using — right when you need one.
       </p>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <Link
+          to="/park-now"
+          className="rounded-xl bg-sky-700 px-4 py-4 text-center font-semibold text-white shadow-sm"
+        >
+          <span className="block text-2xl" aria-hidden>
+            🅿️
+          </span>
+          Park now
+        </Link>
+        <Link
+          to="/explore"
+          className="rounded-xl border border-slate-300 bg-white px-4 py-4 text-center font-semibold text-slate-800"
+        >
+          <span className="block text-2xl" aria-hidden>
+            🔍
+          </span>
+          Plan parking
+        </Link>
+      </div>
 
       {loading ? (
         <div className="mt-8 rounded-lg bg-slate-100 px-4 py-6 text-center text-slate-500">
           Checking your session…
         </div>
       ) : user ? (
-        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">Signed in as</p>
           <p className="mt-1 text-lg font-semibold text-slate-900">
             {user.firstName} {user.lastName}
@@ -50,7 +71,7 @@ export default function Home() {
           </button>
         </div>
       ) : (
-        <div className="mt-8 space-y-3">
+        <div className="mt-6 space-y-3">
           <Link
             to="/register"
             className="block w-full rounded-lg bg-sky-700 px-4 py-3 text-center text-base font-semibold text-white shadow-sm"
@@ -67,8 +88,8 @@ export default function Home() {
       )}
 
       <p className="mt-10 text-center text-xs text-slate-400">
-        Sharing your spot and finding parking arrive in the next phases — your
-        spaces are ready today.
+        Hosts share the exact address only after you reserve — listings show an approximate
+        location.
       </p>
     </div>
   );

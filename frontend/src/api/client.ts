@@ -4,9 +4,12 @@ import {
   AuthResponse,
   AvailabilityWindow,
   CreateSpacePayload,
+  GeocodeCandidate,
   LoginPayload,
   ParkingSpace,
   RegisterPayload,
+  SearchParams,
+  SearchResponse,
   SessionExpiredError,
   SharePayload,
   SpacePhoto,
@@ -232,6 +235,36 @@ export const api = {
     /** Removes a share that hasn't started yet. Idempotent (204 on retry). */
     remove(windowId: string): Promise<void> {
       return request<void>(`/availability/${windowId}`, { method: 'DELETE' });
+    },
+  },
+
+  discovery: {
+    /**
+     * Nearby spaces whose share window fully contains [arrival, departure),
+     * nearest first. Public — no login required; the results are privacy-safe
+     * by construction (approximate location, no exact address).
+     */
+    search(params: SearchParams): Promise<SearchResponse> {
+      const q = new URLSearchParams();
+      q.set('lat', String(params.lat));
+      q.set('lng', String(params.lng));
+      if (params.radiusMiles != null) q.set('radiusMiles', String(params.radiusMiles));
+      q.set('arrival', params.arrival);
+      q.set('departure', params.departure);
+      if (params.maxPrice != null) q.set('maxPrice', params.maxPrice.toFixed(2));
+      if (params.covered != null) q.set('covered', String(params.covered));
+      if (params.evCharging != null) q.set('evCharging', String(params.evCharging));
+      if (params.vehicleSize) q.set('vehicleSize', params.vehicleSize);
+      if (params.page != null) q.set('page', String(params.page));
+      if (params.size != null) q.set('size', String(params.size));
+      return request<SearchResponse>(`/spaces/search?${q.toString()}`);
+    },
+
+    /** Address → coordinate candidates for the destination search box. */
+    geocode(query: string): Promise<GeocodeCandidate[]> {
+      return request<GeocodeCandidate[]>(
+        `/geocode?${new URLSearchParams({ q: query }).toString()}`,
+      );
     },
   },
 };

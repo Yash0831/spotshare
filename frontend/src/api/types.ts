@@ -183,3 +183,69 @@ export interface CreateSpacePayload {
 }
 
 export type UpdateSpacePayload = Omit<CreateSpacePayload, 'authorizationConfirmed'>;
+
+/**
+ * A privacy-safe discovery result. By construction this can never carry an
+ * exact address, a space label/number, parking instructions, or host contact
+ * details — the backend DTO has no such fields (spec §11). Location is
+ * approximate (3-decimal coordinates + area label); the host is "first name
+ * + last initial".
+ */
+export interface PublicSpace {
+  id: string;
+  areaLabel: string;
+  city: string;
+  state: string;
+  parkingType: ParkingType;
+  description: string | null;
+  vehicleSizes: VehicleSize[];
+  heightLimitInches: number | null;
+  covered: boolean;
+  evCharging: boolean;
+  /** Approximate latitude, rounded to 3 decimals (~110 m). */
+  approxLatitude: number;
+  /** Approximate longitude, rounded to 3 decimals (~110 m). */
+  approxLongitude: number;
+  /** Distance from the search point in miles, one decimal. */
+  distanceMiles: number;
+  /** "Michael R." — first name plus last initial. */
+  hostName: string;
+  /** Integer cents per hour; null = free share. */
+  hourlyRateCents: number | null;
+  /** Prorated total for the searched period, in cents. */
+  estimatedTotalCents: number;
+  windowStartsAt: string;
+  windowEndsAt: string;
+  photos: SpacePhoto[];
+}
+
+export interface SearchParams {
+  lat: number;
+  lng: number;
+  /** Search radius in miles (0.5–25); omitted → 3. */
+  radiusMiles?: number;
+  /** ISO instants; the share window must contain [arrival, departure). */
+  arrival: string;
+  departure: string;
+  /** Maximum hourly rate in dollars, e.g. 12.5; free spaces always match. */
+  maxPrice?: number;
+  covered?: boolean;
+  evCharging?: boolean;
+  vehicleSize?: VehicleSize;
+  page?: number;
+  size?: number;
+}
+
+export interface SearchResponse {
+  results: PublicSpace[];
+  page: number;
+  size: number;
+  hasMore: boolean;
+}
+
+/** One address-lookup candidate: a place name and its coordinates. */
+export interface GeocodeCandidate {
+  displayName: string;
+  latitude: number;
+  longitude: number;
+}

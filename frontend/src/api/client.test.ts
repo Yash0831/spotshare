@@ -198,4 +198,71 @@ describe('api client', () => {
     expect(url).toContain('/availability/w1');
     expect(init?.method).toBe('DELETE');
   });
+
+  it('discovery.search builds the public search query', async () => {
+    tokenStore.clear();
+    vi.mocked(fetch).mockResolvedValueOnce(
+      json(200, { results: [], page: 0, size: 50, hasMore: false }),
+    );
+
+    const res = await api.discovery.search({
+      lat: 41.88,
+      lng: -87.62,
+      radiusMiles: 3,
+      arrival: '2026-09-24T15:00:00.000Z',
+      departure: '2026-09-24T17:00:00.000Z',
+      maxPrice: 12.5,
+      covered: true,
+      vehicleSize: 'SEDAN',
+      size: 50,
+    });
+
+    expect(res.results).toEqual([]);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    const u = new URL(String(url), 'http://test');
+    expect(u.pathname).toBe('/api/v1/spaces/search');
+    expect(u.searchParams.get('lat')).toBe('41.88');
+    expect(u.searchParams.get('lng')).toBe('-87.62');
+    expect(u.searchParams.get('radiusMiles')).toBe('3');
+    expect(u.searchParams.get('arrival')).toBe('2026-09-24T15:00:00.000Z');
+    expect(u.searchParams.get('departure')).toBe('2026-09-24T17:00:00.000Z');
+    expect(u.searchParams.get('maxPrice')).toBe('12.50');
+    expect(u.searchParams.get('covered')).toBe('true');
+    expect(u.searchParams.get('vehicleSize')).toBe('SEDAN');
+    expect(u.searchParams.get('size')).toBe('50');
+    // Public endpoint: no auth header when logged out.
+    expect((init?.headers as Record<string, string>)['Authorization']).toBeUndefined();
+  });
+
+  it('discovery.search omits unset optional filters', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      json(200, { results: [], page: 0, size: 20, hasMore: false }),
+    );
+
+    await api.discovery.search({
+      lat: 41.88,
+      lng: -87.62,
+      arrival: '2026-09-24T15:00:00.000Z',
+      departure: '2026-09-24T17:00:00.000Z',
+    });
+
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    const u = new URL(String(url), 'http://test');
+    expect(u.searchParams.has('maxPrice')).toBe(false);
+    expect(u.searchParams.has('covered')).toBe(false);
+    expect(u.searchParams.has('evCharging')).toBe(false);
+    expect(u.searchParams.has('vehicleSize')).toBe(false);
+    expect(u.searchParams.has('radiusMiles')).toBe(false);
+  });
+
+  it('discovery.geocode encodes the query string', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(json(200, []));
+
+    await api.discovery.geocode('West Loop');
+
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    const u = new URL(String(url), 'http://test');
+    expect(u.pathname).toBe('/api/v1/geocode');
+    expect(u.searchParams.get('q')).toBe('West Loop');
+  });
 });
