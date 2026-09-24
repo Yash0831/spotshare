@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -433,6 +435,115 @@ class ReservationServiceTest {
 
         assertThatThrownBy(() -> service.cancel(driver.getId(), started.getId()))
                 .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("RESERVATION_STARTED"));
+    }
+
+    @Test
+    void hostCancelsUpcomingReservationRecordedAsHost() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+        given(reservations.save(any(Reservation.class)))
+                .willAnswer((Answer<Reservation>) inv -> inv.getArgument(0));
+
+        var dto = service.cancel(host.getId(), reservation.getId());
+
+        assertThat(dto.status()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(reservation.getCancelledBy()).isEqualTo(CancelledBy.HOST);
+        assertThat(reservation.getCancelledAt()).isNotNull();
+    }
+
+    @Test
+    void hostCannotCancelAfterArrival() {
+        Reservation started = new Reservation(space, driver, now().minusMinutes(10), now().plusHours(1),
+                300, 450, "SP-AAAAA", null, now());
+        given(reservations.findById(started.getId())).willReturn(Optional.of(started));
+
+        assertThatThrownBy(() -> service.cancel(host.getId(), started.getId()))
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("RESERVATION_STARTED"));
+    }
+
+    @Test
+    void hostDoubleCancelIsANoopSuccess() {
+        Reservation reservation = confirmedReservation();
+        reservation.cancel(now(), CancelledBy.HOST);
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+
+        var dto = service.cancel(host.getId(), reservation.getId());
+
+        assertThat(dto.status()).isEqualTo(ReservationStatus.CANCELLED);
+        verify(reservations, never()).save(any());
+    }
+
+    // ---- host arrivals ------------------------------------------------------
+
+    @Test
+    void hostSeesTodaysArrivalsWithPrivateDriverIdentity() {
+        Reservation reservation = confirmedReservation();
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+        given(reservations.findArrivalsBySpace(eq(space.getId()), any(OffsetDateTime.class),
+                any(OffsetDateTime.class))).willReturn(List.of(reservation));
+
+        var arrivals = service.arrivalsForSpace(host.getId(), space.getId(), null);
+
+        assertThat(arrivals).hasSize(1);
+        var row = arrivals.get(0);
+        assertThat(row.code()).isEqualTo("SP-K84D2");
+        // First name + last initial only — never the full name or contact.
+        assertThat(row.driverName()).isEqualTo("Dan D.");
+        assertThat(row.status()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void arrivalsQueriesTheUtcDayBounds() {
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+        given(reservations.findArrivalsBySpace(eq(space.getId()), any(OffsetDateTime.class),
+                any(OffsetDateTime.class))).willReturn(List.of());
+
+        service.arrivalsForSpace(host.getId(), space.getId(), null);
+
+        var startCaptor = org.mockito.ArgumentCaptor.forClass(OffsetDateTime.class);
+        var endCaptor = org.mockito.ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(reservations).findArrivalsBySpace(eq(space.getId()), startCaptor.capture(),
+                endCaptor.capture());
+        // Clock is fixed at 2026-09-24T12:00Z: omitted date means that UTC day.
+        assertThat(startCaptor.getValue()).isEqualTo(
+                OffsetDateTime.of(2026, 9, 24, 0, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(endCaptor.getValue()).isEqualTo(
+                OffsetDateTime.of(2026, 9, 25, 0, 0, 0, 0, ZoneOffset.UTC));
+    }
+
+    @Test
+    void arrivalsForAnExplicitDateUsesThatDay() {
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+        given(reservations.findArrivalsBySpace(eq(space.getId()), any(OffsetDateTime.class),
+                any(OffsetDateTime.class))).willReturn(List.of());
+
+        service.arrivalsForSpace(host.getId(), space.getId(), LocalDate.of(2026, 9, 25));
+
+        var startCaptor = org.mockito.ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(reservations).findArrivalsBySpace(eq(space.getId()), startCaptor.capture(),
+                any(OffsetDateTime.class));
+        assertThat(startCaptor.getValue()).isEqualTo(
+                OffsetDateTime.of(2026, 9, 25, 0, 0, 0, 0, ZoneOffset.UTC));
+    }
+
+    @Test
+    void strangerCannotSeeArrivals() {
+        given(spaces.findById(space.getId())).willReturn(Optional.of(space));
+
+        assertThatThrownBy(() -> service.arrivalsForSpace(UUID.randomUUID(), space.getId(), null))
+                .satisfies(e -> {
+                    ApiException api = (ApiException) e;
+                    assertThat(api.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(api.getCode()).isEqualTo("NOT_YOUR_SPACE");
+                });
+    }
+
+    @Test
+    void arrivalsForMissingSpaceIs404() {
+        given(spaces.findById(any())).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.arrivalsForSpace(host.getId(), UUID.randomUUID(), null))
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("SPACE_NOT_FOUND"));
     }
 
     // ---- mine ---------------------------------------------------------------

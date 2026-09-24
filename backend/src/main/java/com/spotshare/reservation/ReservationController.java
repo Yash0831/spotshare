@@ -1,8 +1,10 @@
 package com.spotshare.reservation;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,15 +19,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.spotshare.auth.AuthenticatedUser;
 import com.spotshare.reservation.dto.CreateReservationRequest;
+import com.spotshare.reservation.dto.HostArrivalDto;
 import com.spotshare.reservation.dto.ReservationDetailDto;
 import com.spotshare.reservation.dto.ReservationDto;
 
 import jakarta.validation.Valid;
 
 /**
- * Driver reservation endpoints. Every route requires authentication; a
- * driver only ever sees their own reservations, and the exact address is
- * revealed only by the authorized detail view (spec §11).
+ * Reservation endpoints. Driver routes let a driver see only their own
+ * reservations; the host route below lets a host see only their own
+ * spaces' reservations. The exact address is revealed only by the
+ * authorized detail view (spec §11).
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -78,13 +82,31 @@ public class ReservationController {
     }
 
     /**
-     * Driver cancellation. Releases the period; idempotent — cancelling an
-     * already-cancelled reservation returns its current state.
+     * Driver or host cancellation. The driver cancels their own booking;
+     * the host cancels a booking on one of their spaces — recorded as
+     * host-cancelled, never silent. Releases the period; idempotent —
+     * cancelling an already-cancelled reservation returns its current
+     * state.
      */
     @PostMapping("/reservations/{id}/cancel")
     public ReservationDto cancel(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable("id") UUID reservationId) {
         return reservations.cancel(principal.id(), reservationId);
+    }
+
+    /**
+     * The host's arrivals view for one of their spaces (spec §12): that
+     * day's reservations — driver as first name + last initial, arrival,
+     * departure, code, status. {@code date} is {@code YYYY-MM-DD} in UTC;
+     * omitted means today.
+     */
+    @GetMapping("/spaces/{id}/reservations")
+    public List<HostArrivalDto> hostArrivals(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable("id") UUID spaceId,
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return reservations.arrivalsForSpace(principal.id(), spaceId, date);
     }
 }

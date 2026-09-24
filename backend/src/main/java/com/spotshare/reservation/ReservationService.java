@@ -5,7 +5,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +26,7 @@ import com.spotshare.common.Money;
 import com.spotshare.parking.ParkingSpace;
 import com.spotshare.parking.ParkingSpaceRepository;
 import com.spotshare.reservation.dto.CreateReservationRequest;
+import com.spotshare.reservation.dto.HostArrivalDto;
 import com.spotshare.reservation.dto.ReservationDetailDto;
 import com.spotshare.reservation.dto.ReservationDto;
 import com.spotshare.user.User;
@@ -257,16 +260,21 @@ public class ReservationService {
     }
 
     /**
-     * Driver cancellation. Releases the period so the space becomes bookable
-     * again. Idempotent: cancelling an already-cancelled reservation returns
-     * its current state — a no-op success, never an error.
+     * Cancellation, for the driver or the space's host (spec §7). The
+     * driver may cancel any time before arrival; the host may also cancel
+     * before arrival — recorded as host-cancelled via
+     * {@link CancelledBy#HOST}, never silent, always this explicit action.
+     * Idempotent: cancelling an already-cancelled reservation returns its
+     * current state — a no-op success, never an error.
      */
     @Transactional
-    public ReservationDto cancel(UUID driverId, UUID reservationId) {
+    public ReservationDto cancel(UUID callerId, UUID reservationId) {
         Reservation reservation = reservations.findById(reservationId)
                 .orElseThrow(() -> ApiException.notFound("RESERVATION_NOT_FOUND",
                         "We couldn't find that reservation."));
-        if (!reservation.getDriver().getId().equals(driverId)) {
+        boolean isDriver = reservation.getDriver().getId().equals(callerId);
+        boolean isHost = reservation.getSpace().getHost().getId().equals(callerId);
+        if (!isDriver && !isHost) {
             throw ApiException.forbidden("NOT_YOUR_RESERVATION",
                     "This reservation belongs to another account.");
         }
@@ -282,8 +290,31 @@ public class ReservationService {
             throw ApiException.unprocessable("RESERVATION_STARTED",
                     "This reservation has already started and can't be cancelled.");
         }
-        reservation.cancel(now, CancelledBy.DRIVER);
+        reservation.cancel(now, isDriver ? CancelledBy.DRIVER : CancelledBy.HOST);
         return ReservationDto.from(reservations.save(reservation));
+    }
+
+    /**
+     * The host's arrivals view (spec §12): one day's reservations for one
+     * of their spaces — who (first name + last initial), when, which code,
+     * what status. Only the space's host may call it; anyone else gets a
+     * 403. {@code date} is a UTC day; omitted means today.
+     */
+    @Transactional(readOnly = true)
+    public List<HostArrivalDto> arrivalsForSpace(UUID hostId, UUID spaceId, LocalDate date) {
+        ParkingSpace space = spaces.findById(spaceId)
+                .orElseThrow(() -> ApiException.notFound("SPACE_NOT_FOUND",
+                        "We couldn't find that parking space."));
+        if (!space.getHost().getId().equals(hostId)) {
+            throw ApiException.forbidden("NOT_YOUR_SPACE",
+                    "Only the host can view reservations for this space.");
+        }
+        LocalDate day = date != null ? date : LocalDate.now(clock);
+        OffsetDateTime start = day.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+        OffsetDateTime end = day.plusDays(1).atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+        return reservations.findArrivalsBySpace(spaceId, start, end).stream()
+                .map(HostArrivalDto::from)
+                .toList();
     }
 
     /**

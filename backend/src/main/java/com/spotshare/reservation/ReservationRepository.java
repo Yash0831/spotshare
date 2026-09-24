@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -57,4 +58,33 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     List<Reservation> findPast(@Param("driverId") UUID driverId,
                                @Param("confirmed") ReservationStatus confirmed,
                                @Param("now") OffsetDateTime now);
+
+    /**
+     * Completion (spec §7): marks CONFIRMED reservations whose departure
+     * time has passed as COMPLETED. Cancelled reservations are untouched —
+     * the status filter excludes them, so a driver or host cancellation is
+     * never overwritten by the scheduler.
+     *
+     * @return how many reservations were completed
+     */
+    @Modifying
+    @Query("update Reservation r set r.status = :to, r.updatedAt = :now"
+            + " where r.status = :from and r.departure <= :now")
+    int markCompleted(@Param("now") OffsetDateTime now,
+                      @Param("from") ReservationStatus from,
+                      @Param("to") ReservationStatus to);
+
+    /**
+     * One day's reservations for a space, ordered by arrival. Used by the
+     * host arrivals view (spec §12). The driver is fetched here; the DTO
+     * reduces them to first name + last initial, per the privacy rules
+     * (spec §11).
+     */
+    @Query("select r from Reservation r join fetch r.driver"
+            + " where r.space.id = :spaceId"
+            + " and r.arrival >= :start and r.arrival < :end"
+            + " order by r.arrival asc")
+    List<Reservation> findArrivalsBySpace(@Param("spaceId") UUID spaceId,
+                                         @Param("start") OffsetDateTime start,
+                                         @Param("end") OffsetDateTime end);
 }

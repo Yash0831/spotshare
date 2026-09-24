@@ -3,6 +3,7 @@ package com.spotshare;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.spotshare.config.AppProperties;
 import com.spotshare.config.GeocodingProperties;
@@ -10,11 +11,12 @@ import com.spotshare.config.GeocodingProperties;
 /**
  * SpotShare parking-sharing marketplace API.
  *
- * <p>Phase 4: driver discovery — PostGIS nearby search (map + list),
- * privacy-safe public DTOs, and Nominatim-backed geocoding behind the
- * GeocodingProvider interface.
+ * <p>Phase 6: active parking — reservation completion scheduler, host
+ * cancellation, host arrivals view, and the countdown/15-minute-reminder
+ * frontend.
  */
 @SpringBootApplication
+@EnableScheduling
 @EnableConfigurationProperties({AppProperties.class, GeocodingProperties.class})
 public class SpotshareApplication {
 

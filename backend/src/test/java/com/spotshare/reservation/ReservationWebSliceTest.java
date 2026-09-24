@@ -33,6 +33,7 @@ import com.spotshare.auth.SecurityConfig;
 import com.spotshare.common.ApiException;
 import com.spotshare.config.AppProperties;
 import com.spotshare.parking.ParkingType;
+import com.spotshare.reservation.dto.HostArrivalDto;
 import com.spotshare.reservation.dto.ReservationDetailDto;
 import com.spotshare.reservation.dto.ReservationDto;
 import com.spotshare.user.Role;
@@ -101,7 +102,7 @@ class ReservationWebSliceTest {
         OffsetDateTime arrival = OffsetDateTime.of(2026, 9, 24, 14, 0, 0, 0, ZoneOffset.UTC);
         return new ReservationDto(reservationId, spaceId, "West Loop", "Chicago", "IL",
                 ParkingType.DRIVEWAY, arrival, arrival.plusHours(2), 300, 600,
-                ReservationStatus.CONFIRMED, "SP-K84D2", arrival);
+                ReservationStatus.CONFIRMED, "SP-K84D2", null, arrival);
     }
 
     private ReservationDetailDto detailDto() {
@@ -205,7 +206,7 @@ class ReservationWebSliceTest {
         ReservationDto cancelled = new ReservationDto(dto().id(), dto().spaceId(), dto().areaLabel(),
                 dto().city(), dto().state(), dto().parkingType(), dto().arrival(), dto().departure(),
                 dto().hourlyRateCents(), dto().totalCents(), ReservationStatus.CANCELLED,
-                dto().code(), dto().createdAt());
+                dto().code(), CancelledBy.DRIVER, dto().createdAt());
         given(reservations.cancel(driverId, reservationId)).willReturn(cancelled);
 
         mvc.perform(post("/api/v1/reservations/" + reservationId + "/cancel"))
@@ -223,5 +224,39 @@ class ReservationWebSliceTest {
 
         mvc.perform(get("/api/v1/reservations/mine"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void hostArrivalsListsTheDaysReservations() throws Exception {
+        OffsetDateTime arrival = OffsetDateTime.of(2026, 9, 24, 14, 0, 0, 0, ZoneOffset.UTC);
+        var arrivals = List.of(new HostArrivalDto(reservationId, "SP-K84D2", "Dan D.",
+                arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null));
+        given(reservations.arrivalsForSpace(eq(driverId), eq(spaceId), any())).willReturn(arrivals);
+
+        mvc.perform(get("/api/v1/spaces/" + spaceId + "/reservations?date=2026-09-24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("SP-K84D2"))
+                .andExpect(jsonPath("$[0].driverName").value("Dan D."))
+                // The arrivals view never carries contact details.
+                .andExpect(jsonPath("$[0].driverEmail").doesNotExist())
+                .andExpect(jsonPath("$[0].address").doesNotExist());
+    }
+
+    @Test
+    void hostArrivalsRejectedForNonHost() throws Exception {
+        given(reservations.arrivalsForSpace(eq(driverId), eq(spaceId), any()))
+                .willThrow(ApiException.forbidden("NOT_YOUR_SPACE",
+                        "Only the host can view reservations for this space."));
+
+        mvc.perform(get("/api/v1/spaces/" + spaceId + "/reservations"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_YOUR_SPACE"));
+    }
+
+    @Test
+    void hostArrivalsRejectsABadDate() throws Exception {
+        mvc.perform(get("/api/v1/spaces/" + spaceId + "/reservations?date=not-a-date"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 }
