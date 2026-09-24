@@ -14,13 +14,25 @@ import { formatDateTime } from '../utils/time';
  * approximate location, price, distance, availability, type, vehicle fit,
  * photos, and the host's first name + last initial. There is deliberately
  * no exact address here — it is revealed only after a reservation.
+ *
+ * `arrival`/`departure` are the searched trip times (ISO instants) carried
+ * into the detail → Reserve flow so the booking stays consistent with the
+ * search that surfaced the space.
  */
-export default function SpaceCard({ space }: { space: PublicSpace }) {
+export default function SpaceCard({
+  space,
+  arrival,
+  departure,
+}: {
+  space: PublicSpace;
+  arrival: string;
+  departure: string;
+}) {
   const photo = space.photos[0];
   return (
     <Link
       to={`/spaces/${space.id}`}
-      state={{ space }}
+      state={{ space, arrival, departure }}
       className="block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow"
     >
       {photo ? (

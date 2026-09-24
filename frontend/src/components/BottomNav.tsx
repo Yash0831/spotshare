@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
 
 /**
- * Bottom tab bar: Explore · Park Now · My Parking · Profile.
+ * Bottom tab bar: Explore · Park Now · Reservations · My Parking · Profile.
  * Park Now is the prominent center action.
  */
 const TABS = [
   { to: '/explore', label: 'Explore', icon: '🔍' },
   { to: '/park-now', label: 'Park Now', icon: '🅿️', center: true },
+  { to: '/reservations', label: 'Reserved', icon: '🎟️' },
   { to: '/parking', label: 'My Parking', icon: '🏠' },
   { to: '/profile', label: 'Profile', icon: '👤' },
 ];
@@ -17,7 +18,7 @@ export default function BottomNav() {
       aria-label="Main navigation"
       className="bottom-nav fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 backdrop-blur"
     >
-      <div className="mx-auto grid max-w-md grid-cols-4">
+      <div className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}

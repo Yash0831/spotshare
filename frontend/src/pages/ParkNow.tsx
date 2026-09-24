@@ -20,6 +20,10 @@ export default function ParkNow() {
   const [manual, setManual] = useState<PickedLocation | null>(null);
   const [destText, setDestText] = useState('');
   const [results, setResults] = useState<PublicSpace[]>([]);
+  /** The trip times that produced the current results, carried into Reserve. */
+  const [searchedPeriod, setSearchedPeriod] = useState<{ arrival: string; departure: string } | null>(
+    null,
+  );
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +44,7 @@ export default function ParkNow() {
         size: 50,
       });
       setResults(res.results);
+      setSearchedPeriod({ arrival: arrival.toISOString(), departure: departure.toISOString() });
       setSearched(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed. Please try again.');
@@ -152,7 +157,12 @@ export default function ParkNow() {
               />
               <div className="space-y-3">
                 {results.map((space) => (
-                  <SpaceCard key={space.id} space={space} />
+                  <SpaceCard
+                    key={space.id}
+                    space={space}
+                    arrival={searchedPeriod?.arrival ?? ''}
+                    departure={searchedPeriod?.departure ?? ''}
+                  />
                 ))}
               </div>
             </>

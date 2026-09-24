@@ -33,6 +33,10 @@ export default function Explore() {
   );
   const [filters, setFilters] = useState<DiscoveryFilters>(DEFAULT_FILTERS);
   const [results, setResults] = useState<PublicSpace[]>([]);
+  /** The trip times that produced the current results, carried into Reserve. */
+  const [searchedPeriod, setSearchedPeriod] = useState<{ arrival: string; departure: string } | null>(
+    null,
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,6 +81,7 @@ export default function Explore() {
         size: 50,
       });
       setResults(res.results);
+      setSearchedPeriod({ arrival: arrivalIso, departure: departureIso });
       setSelectedId(null);
       setSearched(true);
     } catch (err) {
@@ -171,7 +176,12 @@ export default function Explore() {
               />
               <div className="space-y-3">
                 {results.map((space) => (
-                  <SpaceCard key={space.id} space={space} />
+                  <SpaceCard
+                    key={space.id}
+                    space={space}
+                    arrival={searchedPeriod?.arrival ?? ''}
+                    departure={searchedPeriod?.departure ?? ''}
+                  />
                 ))}
               </div>
             </>

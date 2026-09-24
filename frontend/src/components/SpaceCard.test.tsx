@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import SpaceCard from './SpaceCard';
@@ -14,7 +14,11 @@ vi.mock('../api/client', () => ({
 function renderCard() {
   render(
     <MemoryRouter>
-      <SpaceCard space={publicSpaceFixture} />
+      <SpaceCard
+        space={publicSpaceFixture}
+        arrival={publicSpaceFixture.windowStartsAt}
+        departure={publicSpaceFixture.windowEndsAt}
+      />
     </MemoryRouter>,
   );
 }
@@ -38,6 +42,27 @@ describe('SpaceCard', () => {
     expect(screen.getByText(/Covered/)).toBeInTheDocument();
   });
 
+  it('carries the searched trip times into the detail page state', () => {
+    function Probe() {
+      const location = useLocation();
+      const s = location.state as { arrival?: string; departure?: string } | null;
+      return <p>{`arrival=${s?.arrival} departure=${s?.departure}`}</p>;
+    }
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route
+            path="/"
+            element={<SpaceCard space={publicSpaceFixture} arrival="A-ISO" departure="D-ISO" />}
+          />
+          <Route path="/spaces/:id" element={<Probe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('link'));
+    expect(screen.getByText('arrival=A-ISO departure=D-ISO')).toBeInTheDocument();
+  });
+
   it('never shows an exact address or space label — the DTO has no such fields', () => {
     renderCard();
 
@@ -54,7 +79,11 @@ describe('SpaceCard', () => {
   it('shows "Free" for free shares', () => {
     render(
       <MemoryRouter>
-        <SpaceCard space={{ ...publicSpaceFixture, hourlyRateCents: null }} />
+        <SpaceCard
+          space={{ ...publicSpaceFixture, hourlyRateCents: null }}
+          arrival={publicSpaceFixture.windowStartsAt}
+          departure={publicSpaceFixture.windowEndsAt}
+        />
       </MemoryRouter>,
     );
 

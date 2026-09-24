@@ -3,11 +3,14 @@ import {
   ApiErrorBody,
   AuthResponse,
   AvailabilityWindow,
+  CreateReservationPayload,
   CreateSpacePayload,
   GeocodeCandidate,
   LoginPayload,
   ParkingSpace,
   RegisterPayload,
+  Reservation,
+  ReservationDetail,
   SearchParams,
   SearchResponse,
   SessionExpiredError,
@@ -265,6 +268,44 @@ export const api = {
       return request<GeocodeCandidate[]>(
         `/geocode?${new URLSearchParams({ q: query }).toString()}`,
       );
+    },
+  },
+
+  reservations: {
+    /**
+     * Books [arrival, departure) on a space. `idempotencyKey` must be
+     * generated ONCE per booking attempt (e.g. when the Reserve screen
+     * opens) and reused across retries, so a double-tap or a dropped
+     * connection can never create two reservations: the server answers
+     * 200 with the original booking on a replay.
+     */
+    create(
+      payload: CreateReservationPayload,
+      idempotencyKey: string,
+    ): Promise<Reservation> {
+      return request<Reservation>('/reservations', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(payload),
+      });
+    },
+
+    /** Detail for the driver or the host — the only call that returns the exact address. */
+    get(id: string): Promise<ReservationDetail> {
+      return request<ReservationDetail>(`/reservations/${id}`);
+    },
+
+    /** The signed-in driver's reservations, newest first. */
+    mine(): Promise<Reservation[]> {
+      return request<Reservation[]>('/reservations/mine');
+    },
+
+    /**
+     * Cancels an upcoming reservation. Idempotent: repeating the call for
+     * an already-cancelled reservation still answers 200.
+     */
+    cancel(id: string): Promise<Reservation> {
+      return request<Reservation>(`/reservations/${id}/cancel`, { method: 'POST' });
     },
   },
 };

@@ -265,4 +265,55 @@ describe('api client', () => {
     expect(u.pathname).toBe('/api/v1/geocode');
     expect(u.searchParams.get('q')).toBe('West Loop');
   });
+
+  it('reservations.create sends the Idempotency-Key header with the booking', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(201, { id: 'r1', code: 'SP-K84D2' }));
+
+    await api.reservations.create(
+      { spaceId: 's1', arrival: '2026-09-24T16:00:00Z', departure: '2026-09-24T18:00:00Z' },
+      'key-123',
+    );
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain('/reservations');
+    expect(init?.method).toBe('POST');
+    expect((init?.headers as Record<string, string>)['Idempotency-Key']).toBe('key-123');
+    expect(JSON.parse(init?.body as string)).toEqual({
+      spaceId: 's1',
+      arrival: '2026-09-24T16:00:00Z',
+      departure: '2026-09-24T18:00:00Z',
+    });
+  });
+
+  it('reservations.get fetches the authorized detail view', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(200, { id: 'r1', address: '123 Wacker Dr' }));
+
+    const detail = await api.reservations.get('r1');
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('/reservations/r1');
+    expect(detail.address).toBe('123 Wacker Dr');
+  });
+
+  it('reservations.mine lists the driver reservations', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(200, []));
+
+    await api.reservations.mine();
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('/reservations/mine');
+  });
+
+  it('reservations.cancel posts to the cancel endpoint', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(200, { id: 'r1', status: 'CANCELLED' }));
+
+    const cancelled = await api.reservations.cancel('r1');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain('/reservations/r1/cancel');
+    expect(init?.method).toBe('POST');
+    expect(cancelled.status).toBe('CANCELLED');
+  });
 });

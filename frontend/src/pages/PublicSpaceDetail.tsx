@@ -11,13 +11,16 @@ import { formatDateTime } from '../utils/time';
  * vehicle fit, and the host's first name + last initial — and nothing else.
  *
  * There is no exact address on this page by design: it is revealed only
- * after a reservation is confirmed. Booking itself arrives in a later phase,
- * so the Reserve button is honestly disabled rather than pretending to work.
+ * after a reservation is confirmed. The Reserve button carries the space
+ * and the searched trip times into the booking flow.
  */
 export default function PublicSpaceDetail() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const space = (location.state as { space?: PublicSpace } | null)?.space;
+  const state = location.state as
+    | { space?: PublicSpace; arrival?: string; departure?: string }
+    | null;
+  const space = state?.space;
 
   if (!space) {
     return (
@@ -129,14 +132,16 @@ export default function PublicSpaceDetail() {
           🔒 The exact address is shared only after you reserve — hosts list approximate
           locations to protect their privacy.
         </p>
-        <button
-          type="button"
-          disabled
-          title="Reservations open in the next phase"
-          className="mt-3 w-full cursor-not-allowed rounded-lg bg-slate-300 py-3 font-semibold text-slate-500"
+        <Link
+          to={`/spaces/${space.id}/reserve`}
+          state={{ space, arrival: state?.arrival, departure: state?.departure }}
+          className="mt-3 block w-full rounded-lg bg-sky-600 py-3 text-center font-semibold text-white"
         >
-          Reserve (coming in the next phase)
-        </button>
+          Reserve this spot
+        </Link>
+        <p className="mt-2 text-center text-xs text-slate-500">
+          Beta — no payment is collected. Your reservation holds the spot.
+        </p>
       </div>
     </div>
   );

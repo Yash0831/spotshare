@@ -249,3 +249,51 @@ export interface GeocodeCandidate {
   latitude: number;
   longitude: number;
 }
+
+/** Reservation lifecycle. Terminal states: CANCELLED, COMPLETED. */
+export type ReservationStatus = 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+
+/**
+ * A driver's reservation, privacy-safe by construction: no exact address,
+ * no space label, no parking instructions — those only ever leave the
+ * server on the authorized detail view below.
+ */
+export interface Reservation {
+  id: string;
+  /** Short confirmation code, e.g. "SP-K84D2" — quote it when contacting the host. */
+  code: string;
+  status: ReservationStatus;
+  arrival: string;
+  departure: string;
+  /** Integer cents per hour; null = free share. */
+  hourlyRateCents: number | null;
+  /** Integer cents actually owed, prorated to the minute and rounded HALF_UP. */
+  totalCents: number;
+  spaceId: string;
+  spaceTypeLabel: string;
+  hostName: string;
+  createdAt: string;
+}
+
+/**
+ * The reservation detail, visible only to the driver or the host. This is
+ * the ONLY response in the API that carries the exact address, the space
+ * label, and the parking instructions — they are revealed by the act of
+ * booking, never in discovery or in reservation summaries.
+ */
+export interface ReservationDetail extends Reservation {
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  spaceLabel: string;
+  parkingInstructions: string | null;
+  cancelledAt: string | null;
+}
+
+export interface CreateReservationPayload {
+  spaceId: string;
+  /** ISO instants; the period must sit inside one live share window. */
+  arrival: string;
+  departure: string;
+}

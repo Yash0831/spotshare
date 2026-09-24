@@ -5,10 +5,13 @@ import Explore from './pages/Explore';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import MyParking from './pages/MyParking';
+import MyReservations from './pages/MyReservations';
 import ParkNow from './pages/ParkNow';
 import Profile from './pages/Profile';
 import PublicSpaceDetail from './pages/PublicSpaceDetail';
 import Register from './pages/Register';
+import ReservationDetail from './pages/ReservationDetail';
+import Reserve from './pages/Reserve';
 import SpaceDetail from './pages/SpaceDetail';
 import SpaceWizard from './pages/SpaceWizard';
 
@@ -93,6 +96,37 @@ export default function App() {
                 <TabShell>
                   <PublicSpaceDetail />
                 </TabShell>
+              }
+            />
+            <Route
+              path="/spaces/:id/reserve"
+              element={
+                <RequireAuth>
+                  <TabShell>
+                    <Reserve />
+                  </TabShell>
+                </RequireAuth>
+              }
+            />
+            {/* Driver pages — login required */}
+            <Route
+              path="/reservations"
+              element={
+                <RequireAuth>
+                  <TabShell>
+                    <MyReservations />
+                  </TabShell>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/reservations/:id"
+              element={
+                <RequireAuth>
+                  <TabShell>
+                    <ReservationDetail />
+                  </TabShell>
+                </RequireAuth>
               }
             />
             {/* Host pages — login required */}
