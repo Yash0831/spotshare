@@ -52,4 +52,20 @@ public interface AvailabilityWindowRepository extends JpaRepository<Availability
     List<AvailabilityWindow> findContaining(@Param("spaceId") UUID spaceId,
                                             @Param("arrival") OffsetDateTime arrival,
                                             @Param("departure") OffsetDateTime departure);
+
+    /**
+     * Idempotency guard for the commute materializer (spec §8): the same
+     * (space, period, source) window is never inserted twice.
+     */
+    boolean existsBySpaceIdAndStartsAtAndEndsAtAndSource(UUID spaceId,
+                                                         OffsetDateTime startsAt,
+                                                         OffsetDateTime endsAt,
+                                                         WindowSource source);
+
+    /**
+     * Future windows of one provenance for a space — used to clean up
+     * unreserved COMMUTE windows when a schedule is paused or deleted.
+     */
+    List<AvailabilityWindow> findBySpaceIdAndSourceAndStartsAtAfter(
+            UUID spaceId, WindowSource source, OffsetDateTime now);
 }
