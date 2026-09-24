@@ -14,6 +14,48 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
+**Phase 10 — Product polish, implemented and tested.** What works today:
+
+Everything from Phase 9, plus a consumer-quality pass over the whole app:
+
+- **Faster first paint:** every route is now code-split with `React.lazy`, so
+  the initial bundle is ~177 KB (~58 KB gzipped) instead of ~431 KB (~125 KB
+  gzipped) — a ~59% reduction. The Leaflet map bundle (~158 KB) only loads
+  when the driver opens Explore or Park Now. A branded loading screen covers
+  route transitions and the session check (previously a blank page).
+- **Dialogs you can use with a keyboard:** a shared `Dialog` wrapper gives the
+  Share sheet and the return-early dialog Escape-to-close, focus moved inside
+  on open, a Tab focus trap, focus returned to the trigger on close, and a
+  scroll-locked background.
+- **Easier to see and tap:** a consistent `:focus-visible` ring, 44px minimum
+  touch targets on the host action buttons (remove share, I'm-back, cancel
+  arrival, deactivate), 32px photo-delete buttons, `decoding="async"` +
+  `loading="lazy"` on all photos, and `prefers-reduced-motion` respected
+  (no spinners/pulses for users who ask for it).
+- **Loading states that don't jump:** skeleton placeholders (polite
+  live-region announcements, decorative blocks hidden from assistive
+  tech) on My Reservations and Explore search results, replacing the
+  bare "Loading…" text.
+- **Small correctness details:** page `<meta name="description">` and
+  `theme-color`, a skip-to-main-content link, stronger focus rings on the
+  sheet inputs (border-only focus was too subtle), the dialog overlay sits
+  above the bottom tab bar on host pages that use it, and tall sheets
+  scroll inside a 90dvh panel on small phones.
+
+What does **not** exist yet: payments — those are later phases. Nothing is
+deployed; there are no real users.
+
+**Verification note:** the frontend suite is green (123 tests in 24 files,
+including 6 new dialog tests: Escape, overlay/panel clicks, focus trap both
+directions, focus restore, body scroll lock; and 3 new skeleton tests:
+polite announcements, hidden decorative blocks); `tsc --noEmit` clean; the
+production build is clean and confirms the split chunks. The backend is
+untouched in this phase and its suite is green (213 tests). Docker Compose
+cannot run in this sandbox, so live boot, the curl walkthroughs, and a real
+device/keyboard walkthrough have not been executed here; run them wherever
+you have Docker/a local Postgres and a phone. No screen-reader pass has been
+performed — the ARIA work here is code-reviewed, not AT-verified.
+
 **Phase 9 — Vacation mode, implemented and tested.** What works today:
 
 Everything from Phase 8, plus the host's whole-trip share:
