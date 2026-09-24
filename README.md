@@ -14,7 +14,32 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 6 — Active parking, implemented and tested.** What works today:
+**Phase 7 — Return early, implemented and tested.** What works today:
+
+Everything from Phase 6, plus the host returning earlier than planned:
+
+- **Return early:** on a live share (the space page and My Parking's
+  "Currently sharing"), the host taps **"I'm back early"** and picks a new
+  return time — Now, +15 min, +30 min, +1 hr, or a custom time. The share
+  window simply shrinks; the sharing UI updates immediately (an ended share
+  drops off the list)
+- **Reservation protection (spec §7):** a confirmed reservation is never
+  silently cancelled or shortened. If a driver is parked past the requested
+  return, the API answers 422 `RETURN_BLOCKED_BY_RESERVATION` —
+  "Your space is reserved until 7:30 PM. Earliest available return:
+  7:30 PM." — and carries the exact `earliestReturnTime` in the error
+  `details`, so the dialog stays open and shows when the host may return.
+  Ending exactly when a reservation ends is allowed (half-open
+  `[arrival, departure)`); cancelled reservations don't block
+- Validation: the new return must be in the future (a 60-second grace
+  covers clock skew on the "Now" tap), strictly earlier than the current
+  end, and keep the window's 30-minute minimum. An already-ended share is a
+  no-op success. Only the owning host can do this (403 otherwise)
+- API: `POST /api/v1/availability/{windowId}/return-early` with
+  `{newReturnTime}` returns the updated window; the `live` flag and
+  RETURNING display heuristic re-derive from the timestamps as before
+
+**Phase 6 — Active parking, implemented and tested.** Before that:
 
 Everything from Phase 5, plus the parked experience:
 
@@ -268,6 +293,25 @@ curl -s -X POST localhost:8080/api/v1/reservations/$RES/cancel -H "Authorization
 # → 200 with "status":"CANCELLED","cancelledBy":"HOST"; the driver's
 #   My Reservations row reads "Cancelled by host"
 # → 422 RESERVATION_STARTED if the reservation already started
+```
+
+## Manual return-early check (curl)
+
+```bash
+# Shrink a live share (replace $HOST_ACCESS and $WINDOW; new time must be
+# in the future, earlier than the current end, and keep 30+ min of window)
+curl -s -X POST localhost:8080/api/v1/availability/$WINDOW/return-early \
+  -H "Authorization: Bearer $HOST_ACCESS" -H 'Content-Type: application/json' \
+  -d '{"newReturnTime":"2026-09-24T22:30:00Z"}'
+# → 200 with the updated window (shorter endsAt; "live" re-derived)
+
+# When a driver is parked past the requested return:
+# → 422 RETURN_BLOCKED_BY_RESERVATION
+#   "Your space is reserved until 7:30 PM. Earliest available return: 7:30 PM."
+#   with "details":{"earliestReturnTime":"..."} for the UI
+# A past time → 422 INVALID_RETURN_TIME; a time at/after the current end →
+# 422 NOT_EARLY_RETURN; under 30 min of window → 422 WINDOW_TOO_SHORT;
+# someone else's window → 403 NOT_YOUR_WINDOW; an ended share → 200 no-op.
 ```
 
 ## Configuration
