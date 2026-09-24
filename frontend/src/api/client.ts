@@ -6,6 +6,7 @@ import {
   CreateReservationPayload,
   CreateSpacePayload,
   GeocodeCandidate,
+  HostArrival,
   LoginPayload,
   ParkingSpace,
   RegisterPayload,
@@ -295,14 +296,31 @@ export const api = {
       return request<ReservationDetail>(`/reservations/${id}`);
     },
 
-    /** The signed-in driver's reservations, newest first. */
-    mine(): Promise<Reservation[]> {
-      return request<Reservation[]>('/reservations/mine');
+    /**
+     * The signed-in driver's reservations. `filter` is `upcoming` (not yet
+     * arrived), `active` (parked right now), or `past` (finished,
+     * cancelled, completed); omitted returns upcoming + past.
+     */
+    mine(filter?: 'upcoming' | 'active' | 'past'): Promise<Reservation[]> {
+      const qs = filter ? `?filter=${encodeURIComponent(filter)}` : '';
+      return request<Reservation[]>(`/reservations/mine${qs}`);
     },
 
     /**
-     * Cancels an upcoming reservation. Idempotent: repeating the call for
-     * an already-cancelled reservation still answers 200.
+     * The host's arrivals for one of their spaces. `date` is YYYY-MM-DD
+     * (UTC); omitted means today.
+     */
+    hostArrivals(spaceId: string, date?: string): Promise<HostArrival[]> {
+      const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+      return request<HostArrival[]>(
+        `/spaces/${encodeURIComponent(spaceId)}/reservations${qs}`,
+      );
+    },
+
+    /**
+     * Cancels an upcoming reservation — as the driver, or as the host of
+     * the space. Idempotent: repeating the call for an already-cancelled
+     * reservation still answers 200.
      */
     cancel(id: string): Promise<Reservation> {
       return request<Reservation>(`/reservations/${id}/cancel`, { method: 'POST' });

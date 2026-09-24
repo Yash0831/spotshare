@@ -33,3 +33,16 @@ export function formatRemaining(ms: number): string {
   if (hours === 0) return `${minutes}m`;
   return `${hours}h ${minutes}m`;
 }
+
+/**
+ * "1 hr 42 min" style remaining-time label — the long form used by the
+ * active-parking countdown ("1 hr 42 min remaining, leave by 10:30 PM").
+ */
+export function formatLongRemaining(ms: number): string {
+  if (ms <= 0) return '0 min';
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} min`;
+  return `${hours} hr ${minutes} min`;
+}

@@ -272,6 +272,8 @@ export interface Reservation {
   spaceId: string;
   spaceTypeLabel: string;
   hostName: string;
+  /** Who cancelled, if anyone — lets the UI say who honestly. */
+  cancelledBy: 'DRIVER' | 'HOST' | null;
   createdAt: string;
 }
 
@@ -296,4 +298,20 @@ export interface CreateReservationPayload {
   /** ISO instants; the period must sit inside one live share window. */
   arrival: string;
   departure: string;
+}
+
+/**
+ * One row of the host's arrivals view (GET /spaces/:id/reservations).
+ * Privacy-safe by design: the driver is first name + last initial only —
+ * no contact details — and there is no exact address (the host already
+ * knows their own).
+ */
+export interface HostArrival {
+  id: string;
+  code: string;
+  driverName: string;
+  arrival: string;
+  departure: string;
+  status: ReservationStatus;
+  cancelledBy: 'DRIVER' | 'HOST' | null;
 }

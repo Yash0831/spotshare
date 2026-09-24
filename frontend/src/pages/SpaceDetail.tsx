@@ -5,6 +5,7 @@ import {
   PARKING_TYPE_LABELS,
   AvailabilityWindow,
   DisplayState,
+  HostArrival,
   ParkingSpace,
   ParkingType,
   SessionExpiredError,
@@ -44,6 +45,9 @@ export default function SpaceDetail() {
   const [windows, setWindows] = useState<AvailabilityWindow[] | null>(null);
   const [windowsError, setWindowsError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [arrivals, setArrivals] = useState<HostArrival[] | null>(null);
+  const [arrivalsError, setArrivalsError] = useState<string | null>(null);
+  const [cancellingArrivalId, setCancellingArrivalId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -77,12 +81,27 @@ export default function SpaceDetail() {
     }
   }, [id]);
 
+  const loadArrivals = useCallback(async () => {
+    if (!id) return;
+    setArrivalsError(null);
+    try {
+      setArrivals(await api.reservations.hostArrivals(id));
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        setExpired(true);
+        return;
+      }
+      setArrivalsError(e instanceof Error ? e.message : 'Could not load arrivals. Please try again.');
+    }
+  }, [id]);
+
   useEffect(() => {
     if (!authLoading && user) {
       void load();
       void loadWindows();
+      void loadArrivals();
     }
-  }, [authLoading, user, load, loadWindows]);
+  }, [authLoading, user, load, loadWindows, loadArrivals]);
 
   if (!authLoading && !user) return <Navigate to="/login" replace />;
   if (expired) return <Navigate to="/login" replace />;
@@ -200,6 +219,29 @@ export default function SpaceDetail() {
         return;
       }
       setWindowsError(e instanceof Error ? e.message : 'Could not remove the share. Please try again.');
+    }
+  }
+
+  /**
+   * Host cancellation of an upcoming arrival (spec §7): two taps to
+   * confirm, recorded as host-cancelled — never silent. Only offered
+   * before arrival; the backend rejects anything later.
+   */
+  async function cancelArrival(arrivalId: string) {
+    if (cancellingArrivalId !== arrivalId) {
+      setCancellingArrivalId(arrivalId);
+      return;
+    }
+    setCancellingArrivalId(null);
+    try {
+      await api.reservations.cancel(arrivalId);
+      await loadArrivals();
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        setExpired(true);
+        return;
+      }
+      setArrivalsError(e instanceof Error ? e.message : 'Could not cancel. Please try again.');
     }
   }
 
@@ -455,6 +497,64 @@ export default function SpaceDetail() {
                     Not shared right now. Tap <strong>Share my spot</strong> when you leave.
                   </p>
                 )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Today&apos;s arrivals
+            </h2>
+            {arrivalsError && (
+              <div role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {arrivalsError}
+              </div>
+            )}
+            {arrivals === null ? (
+              <div className="mt-2 animate-pulse rounded-xl border border-slate-200 bg-white p-4" aria-label="Loading arrivals">
+                <div className="h-3 w-1/2 rounded bg-slate-200" />
+              </div>
+            ) : arrivals.length === 0 ? (
+              <p className="mt-2 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                No reservations today. When drivers book your space, they&apos;ll show up here.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {arrivals.map((a) => {
+                  const cancellable =
+                    a.status === 'CONFIRMED' && new Date(a.arrival).getTime() > Date.now();
+                  return (
+                    <div key={a.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-slate-900">{a.driverName}</p>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                          {a.status === 'CANCELLED'
+                            ? a.cancelledBy === 'HOST'
+                              ? 'Cancelled by you'
+                              : 'Cancelled'
+                            : a.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {formatDateTime(a.arrival)} – {formatDateTime(a.departure)} ·{' '}
+                        <span className="font-mono">{a.code}</span>
+                      </p>
+                      {cancellable && (
+                        <button
+                          type="button"
+                          onClick={() => void cancelArrival(a.id)}
+                          className={`mt-2 rounded-lg px-3 py-2 text-sm font-semibold ${
+                            cancellingArrivalId === a.id
+                              ? 'bg-red-600 text-white'
+                              : 'border border-slate-300 text-slate-700'
+                          }`}
+                        >
+                          {cancellingArrivalId === a.id ? 'Tap again to cancel' : 'Cancel reservation'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

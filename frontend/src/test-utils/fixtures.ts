@@ -35,6 +35,7 @@ export const reservationFixture: Reservation = {
   spaceId: 'space-1',
   spaceTypeLabel: 'Assigned space',
   hostName: 'Michael R.',
+  cancelledBy: null,
   createdAt: '2026-09-24T14:00:00Z',
 };
 

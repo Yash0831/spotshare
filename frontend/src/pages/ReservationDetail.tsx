@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { api } from '../api/client';
 import { ApiError, ReservationDetail as Detail } from '../api/types';
+import { ActiveParkingBanner } from '../components/ActiveParkingBanner';
 import { formatCents } from '../utils/money';
 import { formatDateTime } from '../utils/time';
 
@@ -85,12 +86,19 @@ export default function ReservationDetail() {
   }
 
   const upcoming = detail.status === 'CONFIRMED' && new Date(detail.arrival).getTime() > Date.now();
+  // Parked right now: CONFIRMED and arrival <= now < departure.
+  const active =
+    detail.status === 'CONFIRMED' &&
+    new Date(detail.arrival).getTime() <= Date.now() &&
+    new Date(detail.departure).getTime() > Date.now();
 
   return (
     <div className="space-y-4">
       <Link to="/reservations" className="text-sm font-medium text-sky-700">
         ← My reservations
       </Link>
+
+      {active && <ActiveParkingBanner detail={detail} />}
 
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
         <p className="text-sm font-medium text-emerald-800">
