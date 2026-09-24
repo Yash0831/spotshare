@@ -505,7 +505,7 @@ export default function SpaceDetail() {
                     <button
                       type="button"
                       onClick={() => setShowReturnEarly(true)}
-                      className="mt-3 rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
+                      className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
                     >
                       {liveWindow.source === 'VACATION' ? 'I\u2019m back' : 'I\u2019m back early'}
                     </button>
@@ -531,7 +531,7 @@ export default function SpaceDetail() {
                     </div>
                     <button
                       onClick={() => void removeWindow(w.id)}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                      className={`inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold ${
                         removingId === w.id
                           ? 'bg-red-600 text-white'
                           : 'border border-slate-300 text-slate-700'
@@ -608,7 +608,7 @@ export default function SpaceDetail() {
                         <button
                           type="button"
                           onClick={() => void cancelArrival(a.id)}
-                          className={`mt-2 rounded-lg px-3 py-2 text-sm font-semibold ${
+                          className={`mt-2 inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold ${
                             cancellingArrivalId === a.id
                               ? 'bg-red-600 text-white'
                               : 'border border-slate-300 text-slate-700'
@@ -645,10 +645,11 @@ export default function SpaceDetail() {
                     <img
                       src={api.photoUrl(p)} alt={`Photo ${i + 1} of ${space.label}`}
                       className="h-24 w-full rounded-lg object-cover" loading="lazy"
+            decoding="async"
                     />
                     <button
                       onClick={() => void deletePhoto(p.id)} aria-label={`Delete photo ${i + 1}`}
-                      className="absolute right-1 top-1 rounded-full bg-slate-900/70 px-2 py-0.5 text-xs font-bold text-white"
+                      className="absolute right-1 top-1 inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-full bg-slate-900/70 px-2 py-0.5 text-xs font-bold text-white"
                     >
                       ✕
                     </button>

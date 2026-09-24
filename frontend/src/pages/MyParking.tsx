@@ -147,7 +147,7 @@ export default function MyParking() {
                 {!w.live ? (
                   <button
                     onClick={() => void removeShare(w.id)}
-                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${
+                    className={`inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 py-2 text-sm font-semibold ${
                       removingId === w.id
                         ? 'bg-red-600 text-white'
                         : 'border border-slate-300 bg-white text-slate-700'
@@ -159,7 +159,7 @@ export default function MyParking() {
                   <button
                     type="button"
                     onClick={() => setReturnEarlyWindow(w)}
-                    className="shrink-0 rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
+                    className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
                   >
                     I&rsquo;m back early
                   </button>
@@ -203,6 +203,7 @@ export default function MyParking() {
                   alt={`Photo of ${space.label}`}
                   className="h-40 w-full object-cover"
                   loading="lazy"
+            decoding="async"
                 />
               )}
               <div className="p-5">

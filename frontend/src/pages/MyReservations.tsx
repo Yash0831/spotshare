@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { api } from '../api/client';
 import { Reservation } from '../api/types';
+import { ReservationSkeleton } from '../components/Skeleton';
 import { useCountdown } from '../hooks/useCountdown';
 import { formatCents } from '../utils/money';
 import { formatDateTime } from '../utils/time';
@@ -157,7 +158,12 @@ export default function MyReservations() {
   }
 
   if (loading) {
-    return <p className="py-8 text-center text-sm text-slate-500">Loading reservations…</p>;
+    return (
+      <>
+        <h1 className="text-xl font-bold text-slate-900">My reservations</h1>
+        <ReservationSkeleton />
+      </>
+    );
   }
 
   const total = (active ?? []).length + (upcoming ?? []).length + (past ?? []).length;

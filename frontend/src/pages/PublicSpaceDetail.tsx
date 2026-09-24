@@ -64,6 +64,7 @@ export default function PublicSpaceDetail() {
               alt={`${PARKING_TYPE_LABELS[space.parkingType]} parking space`}
               className="h-40 w-full rounded-lg object-cover"
               loading="lazy"
+            decoding="async"
             />
           ))}
         </div>

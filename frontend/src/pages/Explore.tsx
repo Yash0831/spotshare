@@ -5,6 +5,7 @@ import { PublicSpace } from '../api/types';
 import DestinationInput, { PickedLocation } from '../components/DestinationInput';
 import MapView from '../components/MapView';
 import SearchFilters, { DEFAULT_FILTERS, DiscoveryFilters } from '../components/SearchFilters';
+import { SpaceCardSkeleton } from '../components/Skeleton';
 import SpaceCard from '../components/SpaceCard';
 import { roundUpToNextHalfHour, toLocalInputValue } from '../utils/dateInput';
 
@@ -151,6 +152,8 @@ export default function Explore() {
           Enter a destination and when you&apos;ll park to see available shared spots nearby.
         </p>
       )}
+
+      {searched && loading && <SpaceCardSkeleton />}
 
       {searched && !loading && (
         <>

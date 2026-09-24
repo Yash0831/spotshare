@@ -1,29 +1,35 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import BottomNav from './components/BottomNav';
-import Explore from './pages/Explore';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import MyParking from './pages/MyParking';
-import MyReservations from './pages/MyReservations';
-import ParkNow from './pages/ParkNow';
-import Profile from './pages/Profile';
-import PublicSpaceDetail from './pages/PublicSpaceDetail';
-import Register from './pages/Register';
-import ReservationDetail from './pages/ReservationDetail';
-import Reserve from './pages/Reserve';
-import SpaceDetail from './pages/SpaceDetail';
-import SpaceWizard from './pages/SpaceWizard';
+import LoadingScreen from './components/LoadingScreen';
+
+// Route-level code splitting: each page becomes its own chunk so the first
+// paint (Home + auth) stays light — the Leaflet map bundle only loads when
+// the driver opens Explore or Park Now.
+const Explore = lazy(() => import('./pages/Explore'));
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const MyParking = lazy(() => import('./pages/MyParking'));
+const MyReservations = lazy(() => import('./pages/MyReservations'));
+const ParkNow = lazy(() => import('./pages/ParkNow'));
+const Profile = lazy(() => import('./pages/Profile'));
+const PublicSpaceDetail = lazy(() => import('./pages/PublicSpaceDetail'));
+const Register = lazy(() => import('./pages/Register'));
+const ReservationDetail = lazy(() => import('./pages/ReservationDetail'));
+const Reserve = lazy(() => import('./pages/Reserve'));
+const SpaceDetail = lazy(() => import('./pages/SpaceDetail'));
+const SpaceWizard = lazy(() => import('./pages/SpaceWizard'));
 
 function RequireGuest({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <LoadingScreen message="Checking your session…" />;
   return user ? <Navigate to="/" replace /> : children;
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <LoadingScreen message="Checking your session…" />;
   return user ? children : <Navigate to="/login" replace />;
 }
 
@@ -54,7 +60,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1300] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-semibold focus:text-sky-700 focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+        <div id="main-content" tabIndex={-1} className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+          <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route
@@ -169,6 +182,7 @@ export default function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </div>
       </AuthProvider>
     </BrowserRouter>

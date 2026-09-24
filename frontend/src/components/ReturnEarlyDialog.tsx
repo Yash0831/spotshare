@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { ApiError, AvailabilityWindow, SessionExpiredError } from '../api/types';
 import { formatDateTime, formatRemaining, formatTime } from '../utils/time';
+import Dialog from './Dialog';
 
 type Quick = 'now' | 15 | 30 | 60 | 'custom';
 const QUICK_LABELS: { value: Quick; label: string }[] = [
@@ -129,19 +130,9 @@ export default function ReturnEarlyDialog({
     }`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Return early"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-t-2xl bg-white p-6 pb-8 shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
-        <h2 className="text-xl font-bold text-slate-900">I&rsquo;m back early</h2>
+    <Dialog label="Return early" onClose={onClose}>
+      <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
+      <h2 className="text-xl font-bold text-slate-900">I&rsquo;m back early</h2>
         <p className="mt-1 text-sm text-slate-600">
           {spaceLabel} is currently shared until{' '}
           <strong>{formatDateTime(window.endsAt)}</strong>. Pick your new return time — the
@@ -180,7 +171,7 @@ export default function ReturnEarlyDialog({
               max={toLocalInputValue(new Date(currentEnd - 60 * 1000))}
               value={customValue}
               onChange={(e) => setCustomValue(e.target.value)}
-              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none"
+              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600/40"
             />
           )}
         </div>
@@ -210,7 +201,6 @@ export default function ReturnEarlyDialog({
             {submitting ? 'Updating…' : 'End share early'}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

@@ -423,10 +423,11 @@ export default function SpaceWizard() {
                     <img
                       src={p.preview} alt={`Selected photo ${i + 1}`}
                       className="h-24 w-full rounded-lg object-cover"
+                      loading="lazy" decoding="async"
                     />
                     <button
                       type="button" onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`}
-                      className="absolute right-1 top-1 rounded-full bg-slate-900/70 px-2 py-0.5 text-xs font-bold text-white"
+                      className="absolute right-1 top-1 inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-full bg-slate-900/70 px-2 py-0.5 text-xs font-bold text-white"
                     >
                       ✕
                     </button>

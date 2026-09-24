@@ -76,7 +76,7 @@ describe('MyReservations', () => {
     mineMock.mockReturnValue(new Promise<Reservation[]>((r) => { resolve = r; }));
     renderList();
 
-    expect(screen.getByText('Loading reservations…')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading reservations' })).toBeInTheDocument();
 
     resolve([]);
     expect(await screen.findByText('No reservations yet')).toBeInTheDocument();

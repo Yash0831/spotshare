@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { ApiError, AvailabilityWindow, SessionExpiredError } from '../api/types';
 import { formatRate } from '../utils/money';
 import { formatTime } from '../utils/time';
+import Dialog from './Dialog';
 
 const QUICK_HOURS = [1, 2, 4] as const;
 type Chip = 1 | 2 | 4 | 'custom';
@@ -117,19 +118,9 @@ export default function ShareSheet({
     }`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Share my spot"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-t-2xl bg-white p-6 pb-8 shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
-        <h2 className="text-xl font-bold text-slate-900">Share my spot</h2>
+    <Dialog label="Share my spot" onClose={onClose}>
+      <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
+      <h2 className="text-xl font-bold text-slate-900">Share my spot</h2>
         <p className="mt-1 text-sm text-slate-600">
           {spaceLabel} — it stays listed until your return time, then disappears automatically.
         </p>
@@ -170,7 +161,7 @@ export default function ShareSheet({
               min={minInput}
               value={customValue}
               onChange={(e) => setCustomValue(e.target.value)}
-              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none"
+              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600/40"
             />
           )}
         </div>
@@ -210,7 +201,7 @@ export default function ShareSheet({
                 placeholder="3.00"
                 value={dollars}
                 onChange={(e) => setDollars(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-8 pr-4 text-base text-slate-900 focus:border-sky-600 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-8 pr-4 text-base text-slate-900 focus:border-sky-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600/40"
               />
             </div>
           )}
@@ -241,7 +232,6 @@ export default function ShareSheet({
             {sharing ? 'Sharing…' : 'Share my spot'}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

@@ -41,6 +41,7 @@ export default function SpaceCard({
           alt={`${PARKING_TYPE_LABELS[space.parkingType]} parking space`}
           className="h-36 w-full object-cover"
           loading="lazy"
+            decoding="async"
         />
       ) : (
         <div className="flex h-36 w-full items-center justify-center bg-slate-100 text-3xl" aria-hidden>
