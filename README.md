@@ -14,9 +14,40 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 5 — Reservations, implemented and tested.** What works today:
+**Phase 6 — Active parking, implemented and tested.** What works today:
 
-- Everything from Phase 4, plus reservations:
+Everything from Phase 5, plus the parked experience:
+
+- **Active parking screen:** when a reservation is live
+  (`CONFIRMED` and `arrival <= now < departure`), the reservation detail
+  shows a prominent "YOU'RE PARKED" card with a live countdown
+  ("1 hr 42 min remaining, leave by 10:30 PM"), the exact address, space
+  number, instructions, code, and a "Get directions" link (external maps
+  URL — no routing algorithm). An in-app banner appears during the last
+  15 minutes ("15 minutes left — please head back to your car."). In-app
+  only — V1 has no push notifications or SMS, so this countdown and its
+  banner are the reminder
+- **Completion:** a simple `@Scheduled` job (every 60 s, testable via the
+  shared `Clock`) marks `CONFIRMED` reservations with
+  `departure <= now` as `COMPLETED`. The bulk update filters on
+  `CONFIRMED`, so a driver or host cancellation is never overwritten
+- **Host cancellation:** the host can cancel a reservation on their space
+  before arrival (`POST /api/v1/reservations/{id}/cancel`) — recorded as
+  host-cancelled (`cancelledBy: HOST`), never silent. Cancelling twice is
+  a no-op success for both driver and host
+- **Host arrivals:** `GET /api/v1/spaces/{id}/reservations?date=YYYY-MM-DD`
+  (UTC day; omitted means today) lists that day's reservations for the
+  host's space — driver as first name + last initial only, arrival,
+  departure, code, status. Non-hosts get 403; drivers are never identified
+  further
+- **My Reservations** now has three sections driven by the server filters
+  (`?filter=active|upcoming|past`): Active (with a live mini countdown),
+  Upcoming (cancel with a confirm step), Past. A host-cancelled row reads
+  "Cancelled by host" — honest about who cancelled
+- React: `useCountdown` hook (1 s tick, self-correcting from `Date.now()`,
+  15-minute threshold), `ActiveParkingBanner` component, "Today's
+  arrivals" on the host's space page with two-tap host cancel
+- Reservations:
   `POST /api/v1/reservations` with `spaceId`, `arrival`, `departure`
   (all times are half-open `[arrival, departure)` — an arrival exactly at
   another reservation's departure is fine) and an optional
@@ -67,15 +98,15 @@ while session A held its transaction, then failed with
 `excl_reservations_no_overlap` once A committed — exactly one booking
 survived. Adjacent periods, cancelled-period re-booking, and same-period
 bookings on a different space all succeed. The backend suite is green
-(136 tests: unit + MockMvc + web slices); the frontend suite is green
-(75 tests). The database-backed integration tests run where a database is
-reachable from the JVM — they abort cleanly in sandboxes that block JVM
-database connections, so the live Java concurrency test did not execute
-here; the equivalent proof was done with `psql` instead. Docker Compose
-cannot run in this sandbox, so live boot, real Nominatim calls, and the
-curl walkthroughs have not been executed here; run them wherever you have
-Docker/a local Postgres. No visual map verification was performed in this
-sandbox.
+(148 tests: unit + MockMvc + web slices, including the completion-scheduler
+and host-cancel/arrivals tests); the frontend suite is green (88 tests,
+including the countdown hook, the 15-minute threshold, the active-parking
+banner, and the filtered reservation sections). The database-backed
+integration tests run where a database is reachable from the JVM — they
+abort cleanly in sandboxes that block JVM database connections. Docker
+Compose cannot run in this sandbox, so live boot and the curl walkthroughs
+have not been executed here; run them wherever you have Docker/a local
+Postgres. No visual map verification was performed in this sandbox.
 
 Product spec: `docs/v1-spec.md`.
 
@@ -210,6 +241,33 @@ curl -s localhost:8080/api/v1/reservations/$RES -H "Authorization: Bearer $ACCES
 curl -s -X POST localhost:8080/api/v1/reservations/$RES/cancel -H "Authorization: Bearer $ACCESS"
 # → 200 with the cancelled reservation; cancelling again returns the same
 #   state, and the period becomes bookable again
+```
+
+## Manual active-parking check (curl)
+
+```bash
+# The completion scheduler runs every 60 s: any CONFIRMED reservation with
+# departure <= now becomes COMPLETED automatically (no endpoint to call).
+# Verify by listing with the filters (replace $ACCESS):
+curl -s "localhost:8080/api/v1/reservations/mine?filter=active" -H "Authorization: Bearer $ACCESS"
+curl -s "localhost:8080/api/v1/reservations/mine?filter=past" -H "Authorization: Bearer $ACCESS"
+# → a reservation past its departure shows COMPLETED in the past list
+#   (cancelled reservations are never touched by the scheduler)
+
+# Host's arrivals for one space — today (replace $HOST_ACCESS and $SPACE)
+curl -s localhost:8080/api/v1/spaces/$SPACE/reservations -H "Authorization: Bearer $HOST_ACCESS"
+# → [{code, driverName ("Dan D."), arrival, departure, status, cancelledBy}]
+# A driver's token on the same URL gets 403 NOT_YOUR_SPACE — never the data
+
+# A specific day (UTC)
+curl -s "localhost:8080/api/v1/spaces/$SPACE/reservations?date=2026-09-24" \
+  -H "Authorization: Bearer $HOST_ACCESS"
+
+# Host cancels an upcoming reservation before arrival (replace $RES)
+curl -s -X POST localhost:8080/api/v1/reservations/$RES/cancel -H "Authorization: Bearer $HOST_ACCESS"
+# → 200 with "status":"CANCELLED","cancelledBy":"HOST"; the driver's
+#   My Reservations row reads "Cancelled by host"
+# → 422 RESERVATION_STARTED if the reservation already started
 ```
 
 ## Configuration
