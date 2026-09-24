@@ -14,7 +14,40 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 7 — Return early, implemented and tested.** What works today:
+**Phase 8 — Commute mode, implemented and tested.** What works today:
+
+Everything from Phase 7, plus the host's weekly pattern:
+
+- **Commute mode:** on the space page, the host taps **\"+ Add a weekly
+  pattern\"**, picks weekdays (Mon–Sun chips), a start/end time, and a price
+  (free or hourly). One entry per weekday — the server rejects a duplicate
+  with a friendly 409 `SCHEDULE_EXISTS`. Windows materialize **immediately**:
+  real `availability_windows` (source=`COMMUTE`) for the next 14 days, so the
+  host sees the pattern take effect right away
+- **Local times, done right:** start/end are times-of-day in the schedule's
+  IANA timezone (the host's device timezone, sent by the app), so a 9:00 AM
+  share stays 9:00 AM local across daylight-saving changes. Validation mirrors
+  manual shares: end after start, at least 30 minutes, free or $0.01–$100/hr
+- **Materializer:** an hourly `@Scheduled` sweep rolls every active schedule
+  14 days out. It's idempotent — the same (space, period, `COMMUTE`) window is
+  skipped when present, with the natural unique key on
+  `(space_id, starts_at, ends_at, source)` as the backstop. A manual share
+  always wins: the materializer never creates an overlapping window
+- **Pause/resume:** pausing stops future materialization and removes future
+  unreserved `COMMUTE` windows; windows with a confirmed reservation are kept
+  (a driver is never silently cancelled) and live windows expire on their own.
+  Resume re-materializes immediately. Deleting a schedule cleans up the same way
+- **Same rules as everything else:** commute windows are ordinary windows —
+  search shows them (marked \"Auto · Commute\" on the host's share list),
+  drivers reserve them, return-early applies to them, and the booking /
+  exclusion-constraint rules hold unchanged
+- API: `POST /api/v1/spaces/{id}/commute-schedules` (201),
+  `GET /api/v1/spaces/{id}/commute-schedules`,
+  `DELETE /api/v1/commute-schedules/{scheduleId}` (204),
+  `POST /api/v1/commute-schedules/{scheduleId}/pause`,
+  `POST /api/v1/commute-schedules/{scheduleId}/resume`
+
+**Phase 7 — Return early, implemented and tested.** Before that:
 
 Everything from Phase 6, plus the host returning earlier than planned:
 
@@ -312,6 +345,34 @@ curl -s -X POST localhost:8080/api/v1/availability/$WINDOW/return-early \
 # A past time → 422 INVALID_RETURN_TIME; a time at/after the current end →
 # 422 NOT_EARLY_RETURN; under 30 min of window → 422 WINDOW_TOO_SHORT;
 # someone else's window → 403 NOT_YOUR_WINDOW; an ended share → 200 no-op.
+```
+
+## Manual commute-mode check (curl)
+
+```bash
+# Add a weekly entry: every Monday 09:00–17:00 America/Chicago, $3/hr
+# (dayOfWeek 0 = Monday .. 6 = Sunday; times are local in `timezone`)
+curl -s -X POST localhost:8080/api/v1/spaces/$SPACE/commute-schedules \
+  -H "Authorization: Bearer $HOST_ACCESS" -H 'Content-Type: application/json' \
+  -d '{"dayOfWeek":0,"startTime":"09:00","endTime":"17:00","hourlyRateCents":300,"timezone":"America/Chicago"}'
+# → 201 with the schedule; the next two Mondays appear immediately as
+# COMMUTE availability windows (14:00Z–22:00Z while Chicago is on CDT)
+
+# List the space's weekly entries (Monday first)
+curl -s localhost:8080/api/v1/spaces/$SPACE/commute-schedules \
+  -H "Authorization: Bearer $HOST_ACCESS"
+
+# Pause: stops materialization, removes future unreserved COMMUTE windows
+# (windows with a confirmed reservation are kept)
+curl -s -X POST localhost:8080/api/v1/commute-schedules/$SCHED/pause \
+  -H "Authorization: Bearer $HOST_ACCESS"
+# → 200 with "active":false; resume works the same way
+
+# Duplicate weekday → 409 SCHEDULE_EXISTS
+# ("You already have a commute entry for Monday. ...");
+# end before start → 422 INVALID_SCHEDULE; under 30 min → 422 SCHEDULE_TOO_SHORT;
+# bad rate → 422 INVALID_PRICE; bad zone → 422 INVALID_TIMEZONE;
+# someone else's space → 403 NOT_YOUR_SPACE; deactivated space → 410 SPACE_INACTIVE.
 ```
 
 ## Configuration
