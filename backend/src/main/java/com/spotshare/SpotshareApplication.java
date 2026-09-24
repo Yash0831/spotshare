@@ -9,10 +9,9 @@ import com.spotshare.config.AppProperties;
 /**
  * SpotShare parking-sharing marketplace API.
  *
- * <p>Phase 1 foundation: boots the web skeleton (correlation-ID filter, global
- * error envelope, health endpoint, env-driven config). No domain logic yet —
- * module packages under {@code com.spotshare} carry a package-info.java each
- * describing the phase that will fill them in.
+ * <p>Phase 1 foundation: web skeleton (correlation-ID filter, global error
+ * envelope, health endpoint, env-driven config) plus user accounts and JWT
+ * authentication (register / login / rotating refresh tokens / logout).
  */
 @SpringBootApplication
 @EnableConfigurationProperties(AppProperties.class)

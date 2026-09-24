@@ -12,8 +12,8 @@ import java.util.UUID;
 
 /**
  * A rotating refresh token. Only the token hash is stored; the raw token is
- * never persisted. Rotation (single-use) is enforced by the auth service in
- * Phase 4. Maps to the {@code refresh_tokens} table owned by Flyway V1.
+ * never persisted. Single-use rotation is enforced by {@code AuthService}.
+ * Maps to the {@code refresh_tokens} table owned by Flyway V1.
  */
 @Entity
 @Table(name = "refresh_tokens")

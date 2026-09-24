@@ -1,0 +1,17 @@
+# Test profile: runs the full suite against a local PostgreSQL.
+# Create the database once:  createdb spotshare_test   (as the postgres user)
+# JWT secret here is a fixed test value — never used outside tests.
+
+spring:
+  datasource:
+    # sslmode=disable: the local test database has no SSL configured.
+    url: jdbc:postgresql://localhost:5432/spotshare_test?sslmode=disable
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  jwt:
+    secret: test-secret-that-is-long-enough-for-hs256-tests

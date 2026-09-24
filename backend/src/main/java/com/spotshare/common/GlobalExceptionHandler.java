@@ -18,6 +18,13 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex,
+                                                   HttpServletRequest request) {
+        return ResponseEntity.status(ex.getStatus())
+                .body(ErrorEnvelope.of(ex.getCode(), ex.getMessage(), correlationId(request)));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorEnvelope> handleValidation(MethodArgumentNotValidException ex,
                                                          HttpServletRequest request) {

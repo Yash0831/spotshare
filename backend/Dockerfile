@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- Build stage ----------
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
 # Copy the POM first so dependency layers are cached across code changes.
@@ -12,7 +12,7 @@ COPY backend/src ./src
 RUN mvn -q -DskipTests package
 
 # ---------- Runtime stage ----------
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Run as a non-root user; least privilege for the container.
