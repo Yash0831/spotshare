@@ -4,8 +4,9 @@
 
 services:
   db:
-    # PostGIS image now so the extension is available when the schema needs it
-    # (Phase 4+). Phase 1 migrations do NOT enable PostGIS yet.
+    # PostGIS image: the V2 migration (Phase 2) enables the extension for the
+    # generated geography point on parking_spaces; geographic search (Phase 4)
+    # reads it.
     image: postgis/postgis:15-3.4
     container_name: spotshare-db
     restart: unless-stopped

@@ -14,29 +14,45 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 1 — Foundation, implemented and tested.** What works today:
+**Phase 2 — Parking listing, implemented and tested.** What works today:
 
-- User accounts: register / login / logout, bcrypt(12) password hashing
-- JWT access tokens (15 min) + single-use rotating refresh tokens (SHA-256
-  hashes stored, old token rejected after rotation)
-- `GET /api/v1/me` profile lookup; `USER`/`ADMIN` roles; friendly
-  `{code, message, correlationId}` errors, never internals
-- React app shell: typed API client with silent token refresh, auth context,
-  Login / Register / Home pages, mobile-first basics
-- Flyway migrations for `users` + `refresh_tokens` (no PostGIS yet)
+- Everything from Phase 1 (accounts, JWT auth, refresh rotation)
+- Host one-time space setup: location + coordinates, parking type, photos,
+  parking/access instructions, and the authorization confirmation
+  ("I confirm that I own, control, or have permission to share this parking
+  space." — stored with a timestamp; creation is rejected without it)
+- `POST /api/v1/spaces`, `GET /api/v1/spaces/mine`, `GET /api/v1/spaces/{id}`
+  (owner view), `PUT /api/v1/spaces/{id}`, `DELETE /api/v1/spaces/{id}`
+  (soft-deactivates: `active=false`, record retained, idempotent)
+- Photo upload (`POST /api/v1/spaces/{id}/photos`, multipart; JPEG/PNG/WebP,
+  max 5 MB, max 8 per space; bytes stored in Postgres — no S3, no fake URLs)
+  and `DELETE /api/v1/spaces/{id}/photos/{photoId}`; the content endpoint
+  `GET /api/v1/spaces/{id}/photos/{photoId}/content` is public by design
+  (photos carry no private location data)
+- Privacy by design: exact address, space label, and parking instructions are
+  returned only to the space's host (owner DTO); another user gets a 403,
+  never the data. Discovery (Phase 4) gets its own privacy-safe DTO.
+- PostGIS extension enabled; `parking_spaces.geom` is a generated
+  `geography(Point, 4326)` kept in sync with lat/lng (indexed; geographic
+  search reads it in Phase 4)
+- React: "My Parking" page (list, status, deactivate), the 5-step setup
+  wizard (Location → Parking type → Photos → Instructions → Authorization),
+  and an owner space-management page (photos, edit, deactivate)
+- Flyway migrations for `parking_spaces` + `parking_photos`
 
-What does **not** exist yet: parking spaces, availability, search, maps,
-reservations, photos, payments — those are later phases. Nothing is deployed;
-there are no real users. The parking workflows are stubbed out of the UI
-intentionally until their phases land.
+What does **not** exist yet: availability/sharing, search, maps, reservations,
+payments — those are later phases. Nothing is deployed; there are no real
+users.
 
-**Verification note:** the Flyway migration SQL was applied and its
-constraints exercised (unique email, FK, cascade delete) against real
-PostgreSQL 16, and the backend test suite is green (unit + MockMvc slice
-tests). The database-backed integration test runs where a database is
-reachable from the JVM — it aborts cleanly in sandboxes that block database
-connections. Live boot + the curl walkthrough below have not been run in
-this environment yet; run them wherever you have Docker/a local Postgres.
+**Verification note:** the V2 migration SQL was applied against real
+PostgreSQL 16 with PostGIS 3 and its constraints exercised (state regex,
+latitude/longitude ranges, parking-type check, generated `geom` point,
+photo bytea insert). The backend test suite is green (unit + MockMvc slice
+tests, 35 total). The database-backed integration test runs where a database
+is reachable from the JVM — it aborts cleanly in sandboxes that block
+database connections. Live boot + the curl walkthrough below have not been
+run in this environment yet; run them wherever you have Docker/a local
+Postgres.
 
 Product spec: `docs/v1-spec.md`.
 
@@ -46,7 +62,7 @@ Product spec: `docs/v1-spec.md`.
 # 1. Configure secrets
 cp .env.example .env   # set DB_PASSWORD and JWT_SECRET (long random string) at minimum
 
-# 2. Start the database (PostGIS image; Phase 1 uses plain Postgres features)
+# 2. Start the database (PostGIS image; Phase 2 uses the PostGIS extension)
 docker compose up -d
 
 # 3. Run the backend (Flyway migrates automatically on boot)
@@ -88,6 +104,35 @@ curl -s -X POST localhost:8080/api/v1/auth/logout \
   -H 'Content-Type: application/json' \
   -d "{\"refreshToken\":\"$NEW_REFRESH\"}" -o /dev/null -w '%{http_code}\n'
 # → 204
+```
+
+## Manual space check (curl)
+
+```bash
+# Create a space (replace $ACCESS) — authorizationConfirmed is required
+curl -s -X POST localhost:8080/api/v1/spaces \
+  -H "Authorization: Bearer $ACCESS" -H 'Content-Type: application/json' \
+  -d '{"label":"B17","address":"123 Wacker Dr","city":"Chicago","state":"IL",
+       "zipCode":"60601","latitude":41.8858,"longitude":-87.6189,
+       "areaLabel":"West Loop","parkingType":"ASSIGNED_SPACE",
+       "vehicleSizes":["SEDAN","SUV"],"covered":true,
+       "parkingInstructions":"Gate code 1234, level 2.",
+       "authorizationConfirmed":true}'
+# → 201; owner DTO includes the exact address + authorizationConfirmedAt
+
+# My spaces
+curl -s localhost:8080/api/v1/spaces/mine -H "Authorization: Bearer $ACCESS"
+
+# Upload a photo (replace $SPACE)
+curl -s -X POST localhost:8080/api/v1/spaces/$SPACE/photos \
+  -H "Authorization: Bearer $ACCESS" -F "photo=@/path/to/photo.jpg"
+# → 201 with contentUrl; the bytes are served publicly at that URL
+
+# Another user's token gets 403 on GET /spaces/$SPACE — never the data
+
+# Deactivate (soft delete; idempotent)
+curl -s -X DELETE localhost:8080/api/v1/spaces/$SPACE -H "Authorization: Bearer $ACCESS"
+# → 200 with "active":false
 ```
 
 ## Configuration
