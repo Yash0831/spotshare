@@ -174,6 +174,83 @@ class AvailabilityWebSliceTest {
                 .andExpect(jsonPath("$.code").value("NOT_YOUR_SPACE"));
     }
 
+    private String vacationJson(String start, String end, String rateCents) {
+        return """
+                {"startDateTime":"%s","endDateTime":"%s","hourlyRateCents":%s}\
+                """.formatted(start, end, rateCents);
+    }
+
+    private AvailabilityWindowDto vacationDto() {
+        OffsetDateTime now = OffsetDateTime.now();
+        return new AvailabilityWindowDto(windowId, spaceId,
+                now.plusDays(1), now.plusDays(4), WindowSource.VACATION, null,
+                false, now);
+    }
+
+    @Test
+    void vacation_withoutToken_returns401() throws Exception {
+        mvc.perform(post("/api/v1/spaces/" + spaceId + "/vacation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vacationJson("2030-01-01T18:00:00Z", "2030-01-04T09:00:00Z", "null")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void vacation_missingStartTime_returns400() throws Exception {
+        authenticate();
+
+        mvc.perform(post("/api/v1/spaces/" + spaceId + "/vacation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endDateTime\":\"2030-01-04T09:00:00Z\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void vacation_valid_returns201WithVacationWindow() throws Exception {
+        authenticate();
+        given(availability.vacation(eq(hostId), eq(spaceId), any())).willReturn(vacationDto());
+
+        mvc.perform(post("/api/v1/spaces/" + spaceId + "/vacation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vacationJson("2030-01-01T18:00:00Z", "2030-01-04T09:00:00Z", "null")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(windowId.toString()))
+                .andExpect(jsonPath("$.spaceId").value(spaceId.toString()))
+                .andExpect(jsonPath("$.source").value("VACATION"))
+                .andExpect(jsonPath("$.live").value(false));
+    }
+
+    @Test
+    void vacation_overlappingWindow_returns409Envelope() throws Exception {
+        authenticate();
+        given(availability.vacation(eq(hostId), eq(spaceId), any()))
+                .willThrow(ApiException.conflict("OVERLAPPING_WINDOW",
+                        "This space is already shared for part of that trip."));
+
+        mvc.perform(post("/api/v1/spaces/" + spaceId + "/vacation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vacationJson("2030-01-01T18:00:00Z", "2030-01-04T09:00:00Z", "300")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("OVERLAPPING_WINDOW"))
+                .andExpect(jsonPath("$.correlationId").exists());
+    }
+
+    @Test
+    void vacation_otherUsersSpace_returns403Envelope() throws Exception {
+        authenticate();
+        given(availability.vacation(eq(hostId), eq(spaceId), any()))
+                .willThrow(ApiException.forbidden("NOT_YOUR_SPACE",
+                        "This parking space belongs to another account."));
+
+        mvc.perform(post("/api/v1/spaces/" + spaceId + "/vacation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vacationJson("2030-01-01T18:00:00Z", "2030-01-04T09:00:00Z", "null")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_YOUR_SPACE"));
+    }
+
     @Test
     void listForSpace_withoutToken_returns401() throws Exception {
         mvc.perform(get("/api/v1/spaces/" + spaceId + "/availability"))

@@ -18,6 +18,7 @@ import com.spotshare.auth.AuthenticatedUser;
 import com.spotshare.availability.dto.AvailabilityWindowDto;
 import com.spotshare.availability.dto.ReturnEarlyRequest;
 import com.spotshare.availability.dto.ShareRequest;
+import com.spotshare.availability.dto.VacationRequest;
 
 import jakarta.validation.Valid;
 
@@ -57,6 +58,22 @@ public class AvailabilityController {
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable("id") UUID spaceId) {
         return availability.listWindows(principal.id(), spaceId);
+    }
+
+    /**
+     * Vacation mode: the host shares their spot for a whole trip — a
+     * multi-day window (e.g. Friday 18:00 → Monday 09:00). The host picks
+     * both the start and the end; the optional hourly price is in cents
+     * (null = free). Ending the vacation early is the existing return-early
+     * endpoint — it shrinks the window and never silently cancels a driver.
+     */
+    @PostMapping("/spaces/{id}/vacation")
+    public ResponseEntity<AvailabilityWindowDto> vacation(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable("id") UUID spaceId,
+            @Valid @RequestBody VacationRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(availability.vacation(principal.id(), spaceId, req));
     }
 
     /** Upcoming and currently-live shares across all of the host's spaces. */
