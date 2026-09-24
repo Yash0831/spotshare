@@ -211,4 +211,52 @@ class SearchIntegrationTest {
                 .andExpect(jsonPath("$.results[0].id").value(nearerId))
                 .andExpect(jsonPath("$.results[1].id").value(fartherId));
     }
+
+    @Test
+    void search_excludesSpaceWithConflictingReservation() throws Exception {
+        String hostAuth = register("reserved-host@example.com");
+        String spaceId = createSpace(hostAuth, "R1", 41.8858, -87.6189);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        share(hostAuth, spaceId, now.plusHours(4), "300");
+
+        String driverAuth = register("reserved-driver@example.com");
+        OffsetDateTime arrival = now.plusHours(1);
+        OffsetDateTime departure = now.plusHours(2);
+        String reservationId = book(driverAuth, spaceId, arrival, departure);
+
+        // The reserved period no longer lists the space…
+        mvc.perform(get(searchUrl(41.8858, -87.6189, arrival, departure, "")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results", hasSize(0)));
+
+        // …but an adjacent period still does.
+        mvc.perform(get(searchUrl(41.8858, -87.6189, departure, departure.plusHours(1), "")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results", hasSize(1)))
+                .andExpect(jsonPath("$.results[0].id").value(spaceId));
+
+        // Cancelling releases the period: the space lists again.
+        mvc.perform(post("/api/v1/reservations/" + reservationId + "/cancel")
+                        .header("Authorization", driverAuth))
+                .andExpect(status().isOk());
+        mvc.perform(get(searchUrl(41.8858, -87.6189, arrival, departure, "")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results", hasSize(1)))
+                .andExpect(jsonPath("$.results[0].id").value(spaceId));
+    }
+
+    /** Books a space for the driver; returns the reservation id. */
+    private String book(String driverAuth, String spaceId,
+                        OffsetDateTime arrival, OffsetDateTime departure) throws Exception {
+        MvcResult booked = mvc.perform(post("/api/v1/reservations")
+                        .header("Authorization", driverAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"spaceId":"%s","arrival":"%s","departure":"%s"}\
+                                """.formatted(spaceId, arrival, departure)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return objectMapper.readTree(booked.getResponse().getContentAsString())
+                .get("id").asText();
+    }
 }
