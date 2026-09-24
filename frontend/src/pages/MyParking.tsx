@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { formatRate } from '../utils/money';
 import { formatDateTime, formatTime } from '../utils/time';
+import ReturnEarlyDialog from '../components/ReturnEarlyDialog';
 
 /**
  * The host's "My Parking" surface: every space they own, with its derived
@@ -25,6 +26,7 @@ export default function MyParking() {
   const [expired, setExpired] = useState(false);
   const [shares, setShares] = useState<AvailabilityWindow[] | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [returnEarlyWindow, setReturnEarlyWindow] = useState<AvailabilityWindow | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -64,6 +66,18 @@ export default function MyParking() {
       }
       setError(e instanceof Error ? e.message : 'Could not deactivate the space. Please try again.');
     }
+  }
+
+  /** The shrunk window replaces the old one; an ended window drops out. */
+  function handleReturnedEarly(updated: AvailabilityWindow) {
+    setReturnEarlyWindow(null);
+    setShares((prev) =>
+      prev === null
+        ? prev
+        : prev
+            .map((w) => (w.id === updated.id ? updated : w))
+            .filter((w) => new Date(w.endsAt).getTime() > Date.now()),
+    );
   }
 
   async function removeShare(windowId: string) {
@@ -130,7 +144,7 @@ export default function MyParking() {
                   </p>
                   <p className="mt-0.5 text-sm text-sky-800">{formatRate(w.hourlyRateCents)}</p>
                 </div>
-                {!w.live && (
+                {!w.live ? (
                   <button
                     onClick={() => void removeShare(w.id)}
                     className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -140,6 +154,14 @@ export default function MyParking() {
                     }`}
                   >
                     {removingId === w.id ? 'Tap again to remove' : 'Remove'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setReturnEarlyWindow(w)}
+                    className="shrink-0 rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
+                  >
+                    I&rsquo;m back early
                   </button>
                 )}
               </div>
@@ -229,6 +251,16 @@ export default function MyParking() {
             + Add another space
           </Link>
         </div>
+      )}
+
+      {returnEarlyWindow && (
+        <ReturnEarlyDialog
+          window={returnEarlyWindow}
+          spaceLabel={spaceLabel(returnEarlyWindow.spaceId)}
+          onClose={() => setReturnEarlyWindow(null)}
+          onUpdated={handleReturnedEarly}
+          onSessionExpired={() => setExpired(true)}
+        />
       )}
     </div>
   );

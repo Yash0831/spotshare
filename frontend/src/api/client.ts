@@ -240,6 +240,22 @@ export const api = {
     remove(windowId: string): Promise<void> {
       return request<void>(`/availability/${windowId}`, { method: 'DELETE' });
     },
+
+    /**
+     * Return early: move the return time sooner and shrink the window.
+     * Never silently cancels a driver — if a reservation blocks it, the
+     * server answers 422 RETURN_BLOCKED_BY_RESERVATION with
+     * details.earliestReturnTime.
+     */
+    returnEarly(
+      windowId: string,
+      payload: { newReturnTime: string },
+    ): Promise<AvailabilityWindow> {
+      return request<AvailabilityWindow>(`/availability/${windowId}/return-early`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
   },
 
   discovery: {

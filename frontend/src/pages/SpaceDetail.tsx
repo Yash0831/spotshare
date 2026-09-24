@@ -17,6 +17,7 @@ import { useAuth } from '../auth/AuthContext';
 import { formatRate } from '../utils/money';
 import { formatDateTime, formatRemaining, formatTime } from '../utils/time';
 import ShareSheet from '../components/ShareSheet';
+import ReturnEarlyDialog from '../components/ReturnEarlyDialog';
 
 const PARKING_TYPES = Object.keys(PARKING_TYPE_LABELS) as ParkingType[];
 const VEHICLE_SIZES = Object.keys(VEHICLE_SIZE_LABELS) as VehicleSize[];
@@ -42,6 +43,7 @@ export default function SpaceDetail() {
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false);
   const [expired, setExpired] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showReturnEarly, setShowReturnEarly] = useState(false);
   const [windows, setWindows] = useState<AvailabilityWindow[] | null>(null);
   const [windowsError, setWindowsError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -249,6 +251,18 @@ export default function SpaceDetail() {
     setShowShare(false);
     void loadWindows();
     void load();
+  }
+
+  /** The shrunk window replaces the old one; an ended window drops out. */
+  function handleReturnedEarly(updated: AvailabilityWindow) {
+    setShowReturnEarly(false);
+    setWindows((prev) =>
+      prev === null
+        ? prev
+        : prev
+            .map((w) => (w.id === updated.id ? updated : w))
+            .filter((w) => new Date(w.endsAt).getTime() > Date.now()),
+    );
   }
 
   const badgeCls: Record<DisplayState, string> = {
@@ -470,6 +484,13 @@ export default function SpaceDetail() {
                       {formatRemaining(new Date(liveWindow.endsAt).getTime() - Date.now())} left ·{' '}
                       expires automatically at your return time
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowReturnEarly(true)}
+                      className="mt-3 rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
+                    >
+                      I&rsquo;m back early
+                    </button>
                   </div>
                 )}
                 {upcomingWindows.map((w) => (
@@ -657,6 +678,16 @@ export default function SpaceDetail() {
           spaceLabel={space.label}
           onClose={() => setShowShare(false)}
           onShared={handleShared}
+          onSessionExpired={() => setExpired(true)}
+        />
+      )}
+
+      {showReturnEarly && space && liveWindow && (
+        <ReturnEarlyDialog
+          window={liveWindow}
+          spaceLabel={space.label}
+          onClose={() => setShowReturnEarly(false)}
+          onUpdated={handleReturnedEarly}
           onSessionExpired={() => setExpired(true)}
         />
       )}

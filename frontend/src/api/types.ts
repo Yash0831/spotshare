@@ -32,22 +32,26 @@ export interface LoginPayload {
   password: string;
 }
 
-/** Backend error envelope: { code, message, correlationId }. */
+/** Backend error envelope: { code, message, correlationId, details? }. */
 export interface ApiErrorBody {
   code: string;
   message: string;
   correlationId?: string;
+  /** Machine-readable extras for a single error (e.g. earliestReturnTime). */
+  details?: Record<string, unknown>;
 }
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly details?: Record<string, unknown>;
 
   constructor(status: number, body: ApiErrorBody) {
     super(body.message);
     this.name = 'ApiError';
     this.status = status;
     this.code = body.code;
+    this.details = body.details;
   }
 }
 
