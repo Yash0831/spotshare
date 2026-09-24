@@ -1,0 +1,41 @@
+# SpotShare API — env-driven configuration.
+# Every deploy-time value comes from an environment variable (see ../.env.example).
+# Defaults are for local development only; production sets them explicitly.
+
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: spotshare
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:spotshare}${DB_URL_PARAMS:}
+    username: ${DB_USER:spotshare}
+    password: ${DB_PASSWORD:spotshare}
+  jpa:
+    hibernate:
+      # Phase 2: Flyway owns the schema; Hibernate only validates it.
+      ddl-auto: validate
+
+app:
+  cors:
+    # Comma-separated frontend origins, e.g. http://localhost:5173
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    # MUST be a long random value in production. Generate with: openssl rand -base64 48
+    secret: ${JWT_SECRET:change-me-in-dev-only}
+  nominatim:
+    # Identifies SpotShare to Nominatim per its usage policy
+    user-agent: ${NOMINATIM_USER_AGENT:SpotShare/1.0 (dev build)}
+  s3:
+    endpoint: ${S3_ENDPOINT:}
+    region: ${S3_REGION:}
+    bucket: ${S3_BUCKET:}
+    access-key: ${S3_ACCESS_KEY:}
+    secret-key: ${S3_SECRET_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
