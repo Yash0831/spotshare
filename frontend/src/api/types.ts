@@ -58,3 +58,94 @@ export class SessionExpiredError extends Error {
     this.name = 'SessionExpiredError';
   }
 }
+
+/** Space types — the exact V1 set from the product spec. */
+export type ParkingType =
+  | 'DRIVEWAY'
+  | 'PRIVATE_GARAGE'
+  | 'ASSIGNED_SPACE'
+  | 'PRIVATE_LOT'
+  | 'EV_SPACE'
+  | 'OTHER_PRIVATE';
+
+export const PARKING_TYPE_LABELS: Record<ParkingType, string> = {
+  DRIVEWAY: 'Driveway',
+  PRIVATE_GARAGE: 'Private garage',
+  ASSIGNED_SPACE: 'Assigned space',
+  PRIVATE_LOT: 'Private lot',
+  EV_SPACE: 'EV charging space',
+  OTHER_PRIVATE: 'Other private space',
+};
+
+/** Vehicle sizes a space can hold. */
+export type VehicleSize = 'MOTORCYCLE' | 'SEDAN' | 'SUV' | 'VAN' | 'TRUCK';
+
+export const VEHICLE_SIZE_LABELS: Record<VehicleSize, string> = {
+  MOTORCYCLE: 'Motorcycle',
+  SEDAN: 'Sedan',
+  SUV: 'SUV',
+  VAN: 'Van',
+  TRUCK: 'Truck',
+};
+
+/** A photo of a space. `contentUrl` serves the bytes (public by design). */
+export interface SpacePhoto {
+  id: string;
+  contentType: string;
+  sortOrder: number;
+  contentUrl: string;
+  createdAt: string;
+}
+
+/**
+ * The owner's view of a space — the ONLY space DTO in Phase 2. It includes
+ * the private fields (exact address, space label, parking instructions)
+ * because the caller is the host. Discovery (Phase 4) gets its own
+ * privacy-safe DTO; privacy is enforced in the backend DTOs.
+ */
+export interface ParkingSpace {
+  id: string;
+  hostId: string;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  latitude: number;
+  longitude: number;
+  areaLabel: string;
+  parkingType: ParkingType;
+  description: string | null;
+  vehicleSizes: VehicleSize[];
+  heightLimitInches: number | null;
+  covered: boolean;
+  evCharging: boolean;
+  parkingInstructions: string | null;
+  authorizationConfirmed: boolean;
+  authorizationConfirmedAt: string;
+  active: boolean;
+  photos: SpacePhoto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSpacePayload {
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  latitude: number;
+  longitude: number;
+  areaLabel: string;
+  parkingType: ParkingType;
+  description?: string;
+  vehicleSizes: VehicleSize[];
+  heightLimitInches?: number;
+  covered: boolean;
+  evCharging: boolean;
+  parkingInstructions?: string;
+  authorizationConfirmed: boolean;
+}
+
+export type UpdateSpacePayload = Omit<CreateSpacePayload, 'authorizationConfirmed'>;

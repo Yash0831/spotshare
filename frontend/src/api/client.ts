@@ -2,9 +2,13 @@ import {
   ApiError,
   ApiErrorBody,
   AuthResponse,
+  CreateSpacePayload,
   LoginPayload,
+  ParkingSpace,
   RegisterPayload,
   SessionExpiredError,
+  SpacePhoto,
+  UpdateSpacePayload,
   User,
 } from './types';
 
@@ -81,9 +85,16 @@ async function refreshTokens(): Promise<AuthResponse> {
   return refreshInFlight;
 }
 
-async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  retried = false,
+  multipart = false,
+): Promise<T> {
+  // Multipart uploads must NOT set Content-Type: the browser adds the
+  // boundary itself. JSON requests get the default header.
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(multipart ? {} : { 'Content-Type': 'application/json' }),
     ...((init.headers as Record<string, string> | undefined) ?? {}),
   };
   const access = tokenStore.access;
@@ -102,7 +113,7 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
       tokenStore.clear();
       throw new SessionExpiredError();
     }
-    return request<T>(path, init, true);
+    return request<T>(path, init, true, multipart);
   }
   if (res.status === 401 && access) {
     tokenStore.clear();
@@ -146,5 +157,50 @@ export const api = {
 
   health(): Promise<{ status: string }> {
     return request<{ status: string }>('/health');
+  },
+
+  spaces: {
+    /** The host's own spaces (owner DTO — includes private fields). */
+    mine(): Promise<ParkingSpace[]> {
+      return request<ParkingSpace[]>('/spaces/mine');
+    },
+
+    get(id: string): Promise<ParkingSpace> {
+      return request<ParkingSpace>(`/spaces/${id}`);
+    },
+
+    create(payload: CreateSpacePayload): Promise<ParkingSpace> {
+      return request<ParkingSpace>('/spaces', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    update(id: string, payload: UpdateSpacePayload): Promise<ParkingSpace> {
+      return request<ParkingSpace>(`/spaces/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    /** Soft delete: deactivates the space (active=false, record retained). */
+    deactivate(id: string): Promise<ParkingSpace> {
+      return request<ParkingSpace>(`/spaces/${id}`, { method: 'DELETE' });
+    },
+
+    uploadPhoto(id: string, file: File): Promise<SpacePhoto> {
+      const form = new FormData();
+      form.append('photo', file);
+      return request<SpacePhoto>(`/spaces/${id}/photos`, { method: 'POST', body: form }, false, true);
+    },
+
+    deletePhoto(id: string, photoId: string): Promise<void> {
+      return request<void>(`/spaces/${id}/photos/${photoId}`, { method: 'DELETE' });
+    },
+  },
+
+  /** Absolute URL for a photo's bytes (the content endpoint is public). */
+  photoUrl(photo: SpacePhoto): string {
+    return `${BASE_URL}${photo.contentUrl}`;
   },
 };

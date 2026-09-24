@@ -115,4 +115,47 @@ describe('api client', () => {
     expect(url).toContain('/auth/logout');
     expect(init?.body).toContain('refresh-1');
   });
+
+  it('spaces.mine fetches the owner space list', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(json(200, [{ id: 's1', label: 'B17' }]));
+
+    const spaces = await api.spaces.mine();
+
+    expect(spaces).toHaveLength(1);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain('/spaces/mine');
+    const authHeader = (init?.headers as Record<string, string>)['Authorization'];
+    expect(authHeader?.startsWith('Bearer ')).toBe(true);
+    expect(authHeader).toContain('access-1');
+  });
+
+  it('spaces.uploadPhoto sends FormData without a JSON content type', async () => {
+    tokenStore.save('access-1', 'refresh-1');
+    vi.mocked(fetch).mockResolvedValueOnce(
+      json(201, { id: 'p1', contentType: 'image/jpeg', sortOrder: 0 }),
+    );
+    const file = new File([new Uint8Array([1, 2, 3])], 'p.jpg', { type: 'image/jpeg' });
+
+    await api.spaces.uploadPhoto('s1', file);
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain('/spaces/s1/photos');
+    expect(init?.body).toBeInstanceOf(FormData);
+    // The browser sets the multipart boundary; a manual JSON content type
+    // would break the upload.
+    expect((init?.headers as Record<string, string>)['Content-Type']).toBeUndefined();
+  });
+
+  it('photoUrl points at the public content endpoint', () => {
+    expect(
+      api.photoUrl({
+        id: 'p1',
+        contentType: 'image/jpeg',
+        sortOrder: 0,
+        contentUrl: '/api/v1/spaces/s1/photos/p1/content',
+        createdAt: '2026-09-24T00:00:00Z',
+      }),
+    ).toContain('/api/v1/spaces/s1/photos/p1/content');
+  });
 });

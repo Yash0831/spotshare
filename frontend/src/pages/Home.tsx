@@ -35,10 +35,16 @@ export default function Home() {
             {user.firstName} {user.lastName}
           </p>
           <p className="text-sm text-slate-600">{user.email}</p>
+          <Link
+            to="/parking"
+            className="mt-4 block w-full rounded-lg bg-sky-700 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm"
+          >
+            My Parking
+          </Link>
           <button
             onClick={onLogout}
             disabled={busy}
-            className="mt-4 w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
+            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
           >
             {busy ? 'Signing out…' : 'Sign out'}
           </button>
@@ -61,7 +67,8 @@ export default function Home() {
       )}
 
       <p className="mt-10 text-center text-xs text-slate-400">
-        Parking search and sharing arrive in the next phase — accounts are ready today.
+        Sharing your spot and finding parking arrive in the next phases — your
+        spaces are ready today.
       </p>
     </div>
   );
