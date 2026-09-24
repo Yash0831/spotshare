@@ -1,5 +1,6 @@
 package com.spotshare.common;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -84,6 +85,26 @@ public class GlobalExceptionHandler {
                         correlationId(request)));
     }
 
+    /**
+     * Safety net for the reservation anti-double-booking backstop: if an
+     * exclusion violation (SQLState 23P01) ever escapes the booking service,
+     * it still becomes the friendly 409 — never raw SQL. In this schema an
+     * exclusion violation can only mean a double booking.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorEnvelope> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        if ("23P01".equals(sqlStateOf(ex))) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ErrorEnvelope.of("SPACE_JUST_RESERVED",
+                            "This space was just reserved. Please choose another nearby space.",
+                            correlationId(request)));
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorEnvelope.of("INTERNAL_ERROR", "An unexpected error occurred.",
+                        correlationId(request)));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorEnvelope> handleUnexpected(Exception ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -94,5 +115,17 @@ public class GlobalExceptionHandler {
     private static String correlationId(HttpServletRequest request) {
         Object id = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
         return id == null ? null : id.toString();
+    }
+
+    /** Walks the cause chain for the PostgreSQL SQLState (23P01, 23505, …). */
+    private static String sqlStateOf(DataIntegrityViolationException ex) {
+        Throwable t = ex;
+        while (t != null) {
+            if (t instanceof java.sql.SQLException sql) {
+                return sql.getSQLState();
+            }
+            t = t.getCause();
+        }
+        return null;
     }
 }

@@ -39,4 +39,17 @@ public interface AvailabilityWindowRepository extends JpaRepository<Availability
             + " and w.startsAt <= :now and w.endsAt > :now order by w.startsAt asc")
     List<AvailabilityWindow> findLive(@Param("spaceId") UUID spaceId,
                                       @Param("now") OffsetDateTime now);
+
+    /**
+     * Windows fully containing the half-open period
+     * {@code [arrival, departure)}, cheapest first (matches the discovery
+     * query's choice, so the price shown is the price booked). Overlaps are
+     * rejected at share time, so there is normally at most one.
+     */
+    @Query("select w from AvailabilityWindow w where w.space.id = :spaceId"
+            + " and w.startsAt <= :arrival and w.endsAt >= :departure"
+            + " order by w.hourlyRateCents asc nulls first")
+    List<AvailabilityWindow> findContaining(@Param("spaceId") UUID spaceId,
+                                            @Param("arrival") OffsetDateTime arrival,
+                                            @Param("departure") OffsetDateTime departure);
 }

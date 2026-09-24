@@ -20,17 +20,13 @@ import com.spotshare.parking.dto.PhotoDto;
  * The PostGIS discovery queries. One query enforces everything the spec's
  * §10 requires: radius ({@code ST_DWithin}), nearest-first ordering
  * ({@code <->} KNN), active spaces, one share window fully containing
- * {@code [arrival, departure)}, and the optional price/covered/EV/
- * vehicle-size filters.
+ * {@code [arrival, departure)}, no conflicting CONFIRMED reservation, and
+ * the optional price/covered/EV/vehicle-size filters.
  *
  * <p>When several of a space's windows contain the period, the cheapest one
  * wins ({@code DISTINCT ON ... ORDER BY hourly_rate_cents NULLS FIRST}) —
  * the price shown is the price the driver would actually pay for that
- * period, and Phase 5 books against exactly one window.
- *
- * <p><strong>Phase 5 will add</strong> "no conflicting CONFIRMED
- * reservation" to this query. Until then, a listed space is shared for the
- * whole period but may still be booked by another driver first.
+ * period, and Phase 5 books against exactly that window.
  */
 @Repository
 public class SearchRepository {
@@ -63,6 +59,14 @@ public class SearchRepository {
               AND (:covered IS NULL OR s.covered = :covered)
               AND (:evCharging IS NULL OR s.ev_charging = :evCharging)
               AND (:vehicleSize IS NULL OR s.vehicle_sizes @> ARRAY[:vehicleSize]::text[])
+              AND NOT EXISTS (
+                  SELECT 1 FROM reservations r
+                  WHERE r.space_id = s.id
+                    AND r.status = 'CONFIRMED'
+                    AND r.period && tstzrange(
+                        CAST(:arrival AS timestamptz),
+                        CAST(:departure AS timestamptz), '[)')
+              )
             ORDER BY s.geom <-> ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography
             LIMIT :limit OFFSET :offset
             """;
