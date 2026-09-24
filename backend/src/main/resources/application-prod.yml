@@ -1,0 +1,47 @@
+# SpotShare API — production profile (`SPRING_PROFILES_ACTIVE=prod`).
+# Reads entirely from environment variables; see ../.env.example.
+# Refuses to boot when JWT_SECRET is missing or short (ProdSecurityCheck)
+# and when it is under 32 bytes (JwtTokenService, all profiles).
+
+spring:
+  datasource:
+    hikari:
+      # Sized for a small instance: the app does short OLTP queries and the
+      # container runs on ~512 MB. Raise only if the DB and the box allow it.
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+      max-lifetime: 600000
+  jpa:
+    open-in-view: false
+  flyway:
+    # Never repair or clean in production; validate the schema on migrate.
+    validate-on-migrate: true
+    clean-disabled: true
+  error:
+    # Error responses carry the {code,message,correlationId} envelope only.
+    include-message: never
+    include-binding-errors: never
+
+server:
+  # Keep access logging minimal; no request bodies (they can hold secrets).
+  tomcat:
+    accesslog:
+      enabled: true
+      pattern: "%h %l %u %t \"%r\" %s %b"
+
+logging:
+  level:
+    root: WARN
+    com.spotshare: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

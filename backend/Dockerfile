@@ -16,7 +16,11 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Run as a non-root user; least privilege for the container.
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# wget is needed only for the container health check (see docker-compose.prod.yml).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appuser && useradd -r -g appuser appuser
 USER appuser
 
 COPY --from=build /build/target/spotshare-*.jar app.jar

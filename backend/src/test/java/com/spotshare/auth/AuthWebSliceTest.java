@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.spotshare.auth.dto.LoginRequest;
 import com.spotshare.auth.dto.RegisterRequest;
 import com.spotshare.common.ApiException;
+import com.spotshare.common.RateLimiter;
 import com.spotshare.config.AppProperties;
 import com.spotshare.user.Role;
 import com.spotshare.user.User;
@@ -59,6 +60,9 @@ class AuthWebSliceTest {
 
     @MockBean
     private JwtAuthenticationFilter jwtFilter;
+
+    @MockBean
+    private RateLimiter rateLimiter;
 
     @TestConfiguration
     static class TestConfig {
@@ -161,5 +165,20 @@ class AuthWebSliceTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("sam@example.com"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    }
+
+    @Test
+    void login_whenRateLimited_returns429Envelope() throws Exception {
+        org.mockito.Mockito.doThrow(new ApiException(
+                        org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED",
+                        "You're searching a bit too fast. Please wait a moment and try again."))
+                .when(rateLimiter).check(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyInt());
+
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"sam@example.com\",\"password\":\"pw\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
     }
 }
