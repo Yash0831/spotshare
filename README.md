@@ -14,48 +14,55 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
-**Phase 3 — Temporary availability, implemented and tested.** What works today:
+**Phase 4 — Discovery, implemented and tested.** What works today:
 
-- Everything from Phase 2 (accounts, JWT auth, space setup, photos)
-- The signature **"I'm leaving / Share My Spot"** flow: one tap starts a
-  temporary availability window for a space — pick a return time (quick chips
-  1h / 2h / 4h or a custom time; defaults to +2h), choose **Free** or an hourly
-  price (max $100/hr; null means free), confirm — the spot is immediately
-  available to others and **expires automatically** at the return time
-  (expiry is derived — a window is live while `startsAt <= now < endsAt` —
-  never scheduled or stored)
-- Availability rules, enforced server-side: host-only, active spaces only,
-  return time must be in the future, minimum 30 minutes, hourly price
-  1–10,000 cents, **overlapping windows for one space are rejected (409)**;
-  adjacent windows are allowed
-- `POST /api/v1/spaces/{id}/availability`, `GET /api/v1/spaces/{id}/availability`
-  (upcoming + live for one space), `GET /api/v1/availability/mine`
-  (across all of the host's spaces), `DELETE /api/v1/availability/{windowId}`
-  (removes a not-yet-started share; idempotent — a missing window is a no-op)
-- Derived display state on every space DTO: `OFFLINE` (deactivated), `PRIVATE`
-  (no live share), `AVAILABLE` (shared, >30 min left), `RETURNING` (shared,
-  ≤30 min left); `RESERVED` stays reserved for Phase 5
-- React: **Share my spot** sheet on the space page (return-time chips, custom
-  picker, free/hourly toggle, cents-safe price input, live summary), per-space
-  and cross-space "currently sharing" lists with two-tap remove for
-  not-started shares, and status badges driven by the backend `displayState`
-- Flyway migration `V3__create_availability_windows.sql`
-  (`MANUAL`/`COMMUTE`/`VACATION` sources; positive-price and
-  end-after-start constraints; half-open overlap-safe query semantics)
+- Everything from Phase 3, plus public nearby search:
+  `GET /api/v1/spaces/search?lat=&lng=&arrival=&departure=` with optional
+  `radiusMiles` (0.5–25, default 3), `maxPrice` (dollars; free shares always
+  match), `covered`, `evCharging`, `vehicleSize`, and `page`/`size` pagination
+- PostGIS search: `ST_DWithin` radius filtering, KNN (`<->`) nearest-first
+  ordering, and a **complete-period containment** rule — only windows with
+  `starts_at <= arrival AND ends_at >= departure` match; when several windows
+  contain the period, the cheapest wins
+- **Privacy by construction:** the public DTO carries no exact address, no
+  space label/number, no parking instructions, and no host contact — only an
+  approximate location (coordinates rounded to ~110 m + area label), the host's
+  first name + last initial, price, distance, photos, and the containing window.
+  The exact address is revealed only after a reservation (Phase 5)
+- `GET /api/v1/geocode?q=` — address lookup via Nominatim (OpenStreetMap),
+  behind a `GeocodingProvider` interface with a configurable User-Agent,
+  US-scoped, ~1 req/s self-throttling, and a friendly `GEOCODER_UNAVAILABLE`
+  503 when the provider can't be reached. Set `NOMINATIM_USER_AGENT` (see
+  `.env.example`) to something identifying before any real traffic — the
+  Nominatim usage policy requires it
+- React: **Explore** (destination autocomplete + date/time + filters → map
+  with price pins + result list → public detail page), **Park Now**
+  (geolocation → immediate 2-hour search, with manual destination fallback
+  when location is denied/unavailable), bottom tab bar
+  (Explore · Park Now · My Parking · Profile), Leaflet + OpenStreetMap tiles
+  (no API keys)
+- ⚠️ **Reservation conflicts are NOT filtered yet.** A share that will be
+  booked in Phase 5 can still appear in Phase 4 results. Conflict filtering
+  arrives with reservations in Phase 5 — this is a known, documented gap,
+  not an oversight.
 
-What does **not** exist yet: discovery/search, maps, reservations, payments —
-those are later phases. Nothing is deployed; there are no real users.
+What does **not** exist yet: reservations, payments — those are later
+phases. Nothing is deployed; there are no real users.
 
-**Verification note:** V1–V3 migrations were applied against real
-PostgreSQL 16 with PostGIS 3 and V3 constraints exercised (invalid order,
-zero/negative rate, invalid source rejected; adjacent windows not counted as
-overlapping). The backend suite is green (68 tests: unit + MockMvc + web
-slices); the frontend suite is green (30 tests: components + pages +
-utils). The database-backed integration tests run where a database is
-reachable from the JVM — they abort cleanly in sandboxes that block
-database connections. Docker Compose cannot run in this sandbox, so live
-boot and the curl walkthroughs have not been executed here; run them
-wherever you have Docker/a local Postgres.
+**Verification note:** no new migrations in Phase 4. The native PostGIS
+search SQL was executed against real PostgreSQL 16 + PostGIS 3 on a scratch
+database with the V1–V3 schema: radius filtering, complete-period containment
+(partial windows excluded), cheapest-window selection, `maxPrice`
+(including free shares matching), covered/EV/vehicle-size filters, and
+nearest-first ordering all verified against seeded data. The backend suite is
+green (96 tests: unit + MockMvc + web slices + privacy allowlist); the
+frontend suite is green (58 tests, including a real Leaflet map render in
+jsdom). The database-backed integration tests run where a database is
+reachable from the JVM — they abort cleanly in sandboxes that block database
+connections. Docker Compose cannot run in this sandbox, so live boot, real
+Nominatim calls, and the curl walkthroughs have not been executed here; run
+them wherever you have Docker/a local Postgres. No visual map verification
+was performed in this sandbox.
 
 Product spec: `docs/v1-spec.md`.
 
