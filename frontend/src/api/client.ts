@@ -5,6 +5,8 @@ import {
   AvailabilityWindow,
   CreateReservationPayload,
   CreateSpacePayload,
+  CommuteSchedule,
+  CreateCommuteSchedulePayload,
   GeocodeCandidate,
   HostArrival,
   LoginPayload,
@@ -254,6 +256,44 @@ export const api = {
       return request<AvailabilityWindow>(`/availability/${windowId}/return-early`, {
         method: 'POST',
         body: JSON.stringify(payload),
+      });
+    },
+  },
+
+  /**
+   * Commute mode: weekly recurring availability. Each call targets one
+   * weekday entry; the server materializes real COMMUTE windows immediately.
+   */
+  commute: {
+    /** The weekly commute entries for one of the host's spaces, Monday first. */
+    list(spaceId: string): Promise<CommuteSchedule[]> {
+      return request<CommuteSchedule[]>(`/spaces/${spaceId}/commute-schedules`);
+    },
+
+    /** Adds one weekday entry; the server materializes its windows right away. */
+    create(spaceId: string, payload: CreateCommuteSchedulePayload): Promise<CommuteSchedule> {
+      return request<CommuteSchedule>(`/spaces/${spaceId}/commute-schedules`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    /** Deletes an entry and its future unreserved COMMUTE windows. */
+    remove(scheduleId: string): Promise<void> {
+      return request<void>(`/commute-schedules/${scheduleId}`, { method: 'DELETE' });
+    },
+
+    /** Pauses an entry: stops materialization, removes future unreserved windows. */
+    pause(scheduleId: string): Promise<CommuteSchedule> {
+      return request<CommuteSchedule>(`/commute-schedules/${scheduleId}/pause`, {
+        method: 'POST',
+      });
+    },
+
+    /** Resumes a paused entry and materializes its windows immediately. */
+    resume(scheduleId: string): Promise<CommuteSchedule> {
+      return request<CommuteSchedule>(`/commute-schedules/${scheduleId}/resume`, {
+        method: 'POST',
       });
     },
   },

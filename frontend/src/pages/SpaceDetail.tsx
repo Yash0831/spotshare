@@ -17,6 +17,7 @@ import { useAuth } from '../auth/AuthContext';
 import { formatRate } from '../utils/money';
 import { formatDateTime, formatRemaining, formatTime } from '../utils/time';
 import ShareSheet from '../components/ShareSheet';
+import CommuteMode from '../components/CommuteMode';
 import ReturnEarlyDialog from '../components/ReturnEarlyDialog';
 
 const PARKING_TYPES = Object.keys(PARKING_TYPE_LABELS) as ParkingType[];
@@ -478,6 +479,11 @@ export default function SpaceDetail() {
                   <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
                     <p className="text-sm font-bold text-sky-900">
                       Available now — until {formatTime(liveWindow.endsAt)}
+                      {liveWindow.source === 'COMMUTE' && (
+                        <span className="ml-1 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
+                          Auto · Commute
+                        </span>
+                      )}
                     </p>
                     <p className="mt-1 text-sm text-sky-800">
                       {formatRate(liveWindow.hourlyRateCents)} ·{' '}
@@ -497,7 +503,12 @@ export default function SpaceDetail() {
                   <div key={w.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">
-                        Shared until {formatDateTime(w.endsAt)}
+                        Shared until {formatDateTime(w.endsAt)}{' '}
+                        {w.source === 'COMMUTE' && (
+                          <span className="ml-1 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
+                            Auto · Commute
+                          </span>
+                        )}
                       </p>
                       <p className="mt-0.5 text-sm text-slate-600">{formatRate(w.hourlyRateCents)}</p>
                     </div>
@@ -521,6 +532,14 @@ export default function SpaceDetail() {
               </div>
             )}
           </div>
+
+          {space.active && (
+            <CommuteMode
+              spaceId={space.id}
+              onWindowsChanged={() => void loadWindows()}
+              onSessionExpired={() => setExpired(true)}
+            />
+          )}
 
           <div className="mt-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">

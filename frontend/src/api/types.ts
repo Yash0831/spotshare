@@ -95,6 +95,38 @@ export interface SharePayload {
   hourlyRateCents?: number | null;
 }
 
+/**
+ * One weekly commute entry. dayOfWeek is 0 = Monday .. 6 = Sunday; startTime
+ * and endTime are local "HH:MM" times-of-day in the schedule's timezone.
+ */
+export interface CommuteSchedule {
+  id: string;
+  spaceId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  /** Integer cents per hour; null = free commute window. */
+  hourlyRateCents: number | null;
+  /** IANA zone the times were entered in, e.g. "America/Chicago". */
+  timezone: string;
+  /** False while paused: no new windows are materialized. */
+  active: boolean;
+  createdAt: string;
+}
+
+/** Create one weekly commute entry for a space. */
+export interface CreateCommuteSchedulePayload {
+  dayOfWeek: number;
+  /** Local "HH:MM" time-of-day. */
+  startTime: string;
+  /** Local "HH:MM" time-of-day. */
+  endTime: string;
+  /** Integer cents per hour; null = free. */
+  hourlyRateCents: number | null;
+  /** IANA zone name, e.g. "America/Chicago". */
+  timezone: string;
+}
+
 /** Space types — the exact V1 set from the product spec. */
 export type ParkingType =
   | 'DRIVEWAY'
