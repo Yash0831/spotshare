@@ -14,6 +14,47 @@ Core loop: **I'M LEAVING → SHARE → DISCOVER → RESERVE → PARK → RETURN.
 
 ## Status (honest)
 
+**Phase 11 — Deployment, implemented and tested.** The app is deployable:
+everything is env-driven and documented in `docs/deployment.md`.
+
+- **Production configuration:** a `prod` Spring profile
+  (`backend/src/main/resources/application-prod.yml`) with a small Hikari pool
+  (max 5), WARN/INFO logging, `validate-on-migrate` + `clean-disabled` for
+  Flyway, and Spring error-message inclusion disabled. Every deploy-time
+  value comes from environment variables (see `.env.example`); there are no
+  default secrets.
+- **Fail-fast secrets:** `JwtTokenService` already refused secrets under 32
+  bytes in all profiles; a `ProdSecurityCheck` makes it explicit under
+  `prod`. Covered by new `ProdSecurityCheckTest` cases.
+- **Health checks:** `GET /api/v1/health` and `/actuator/health`, both
+  unauthenticated by design (load balancers need them); covered by a new
+  `HealthControllerTest`.
+- **Security audit:** bcrypt cost 12 confirmed; photo uploads still
+  JPEG/PNG/WebP ≤ 5 MB, 8 per space; errors still return only the
+  `{code,message,correlationId}` envelope (`INTERNAL_ERROR` leaks nothing);
+  no secrets in logs. **Gap fixed:** auth endpoints (register/login/refresh)
+  now share the same fixed-window rate limiter as search/geocode
+  (20 attempts/min/IP, 429 `RATE_LIMITED` envelope).
+- **Containers:** multi-stage `backend/Dockerfile` (non-root user, cgroup-aware
+  JVM) and a new `frontend/Dockerfile` + `frontend/nginx.conf` (Vite build on
+  nginx; `/api/` proxied to the API so the default relative
+  `VITE_API_BASE_URL=/api/v1` stays same-origin). New
+  `docker-compose.prod.yml` wires `db` (PostGIS — required, plain Postgres is
+  not enough) → `api` (`SPRING_PROFILES_ACTIVE=prod`, health-gated) → `web`.
+- **Docs:** `docs/deployment.md` covers prerequisites (PostGIS, ~512 MB RAM),
+  every env var, build/start, health checks, a curl smoke test, migration and
+  backup/restore guidance, logs, the security checklist, and honest notes
+  (compose not executed in this sandbox; in-memory rate limiter is
+  per-container; Nominatim dependency).
+
+**Not deployed:** nothing is live anywhere. Phase 11 delivers deployability,
+not a deployment — the user decides where and when to run it.
+
+**Verification note:** backend suite green; frontend suite green (`tsc`
+clean, production build clean). Docker Compose still cannot run in this
+sandbox, so the prod compose files are carefully reviewed but not executed
+here; the first real deploy is the verification run.
+
 **Phase 10 — Product polish, implemented and tested.** What works today:
 
 Everything from Phase 9, plus a consumer-quality pass over the whole app:
