@@ -1,9 +1,12 @@
-# Local development stack: Postgres 15 + the SpotShare API.
-# Copy ../.env.example to ../.env and fill in the secrets first.
+# Phase 1: database only. The backend runs via Maven and the frontend via npm;
+# the API container is built by backend/Dockerfile for later phases.
+# Copy ../.env.example to ../.env and set DB_PASSWORD first.
 
 services:
   db:
-    image: postgres:15
+    # PostGIS image now so the extension is available when the schema needs it
+    # (Phase 4+). Phase 1 migrations do NOT enable PostGIS yet.
+    image: postgis/postgis:15-3.4
     container_name: spotshare-db
     restart: unless-stopped
     environment:
@@ -19,23 +22,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  app:
-    build:
-      context: ..
-      dockerfile: ./backend/Dockerfile
-    container_name: spotshare-api
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - ../.env
-    environment:
-      DB_HOST: db
-      PORT: 8080
-    ports:
-      - "${PORT:-8080}:8080"
 
 volumes:
   spotshare-pgdata:
