@@ -31,6 +31,18 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.BAD_REQUEST, code, message);
     }
 
+    public static ApiException unprocessable(String code, String message) {
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, code, message);
+    }
+
+    public static ApiException payloadTooLarge(String code, String message) {
+        return new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, code, message);
+    }
+
+    public static ApiException notFound(String code, String message) {
+        return new ApiException(HttpStatus.NOT_FOUND, code, message);
+    }
+
     public static ApiException unauthorized(String code, String message) {
         return new ApiException(HttpStatus.UNAUTHORIZED, code, message);
     }

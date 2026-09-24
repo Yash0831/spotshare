@@ -6,6 +6,11 @@ server:
   port: ${PORT:8080}
 
 spring:
+  servlet:
+    multipart:
+      # Matches the 5 MB per-photo limit enforced in ParkingSpaceService.
+      max-file-size: 6MB
+      max-request-size: 6MB
   application:
     name: spotshare
   datasource:

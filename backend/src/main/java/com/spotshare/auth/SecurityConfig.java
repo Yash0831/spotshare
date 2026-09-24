@@ -54,6 +54,11 @@ public class SecurityConfig {
                 .exceptionHandling(eh -> eh.authenticationEntryPoint(authenticationEntryPoint()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Space photos carry no private location data; discovery
+                        // shows them publicly (Phase 4). Everything else under
+                        // /api/v1/spaces/** requires the caller to be the host.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/spaces/*/photos/*/content").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

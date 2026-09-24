@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import com.spotshare.config.CorrelationIdFilter;
 
@@ -34,6 +36,24 @@ public class GlobalExceptionHandler {
                 .orElse("invalid request");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorEnvelope.of("VALIDATION_ERROR", detail, correlationId(request)));
+    }
+
+    /** A photo bigger than the servlet multipart cap — friendly 413, not a 500. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorEnvelope> handleMaxUpload(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ErrorEnvelope.of("PHOTO_TOO_LARGE",
+                        "That photo is too large. Please use a photo under 5 MB.",
+                        correlationId(request)));
+    }
+
+    /** Photo upload without the "photo" part. */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorEnvelope> handleMissingPart(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ErrorEnvelope.of("INVALID_PHOTO",
+                        "Choose a photo to upload.",
+                        correlationId(request)));
     }
 
     @ExceptionHandler(Exception.class)
