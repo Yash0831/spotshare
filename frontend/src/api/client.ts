@@ -21,6 +21,7 @@ import {
   SpacePhoto,
   UpdateSpacePayload,
   User,
+  VacationPayload,
 } from './types';
 
 /**
@@ -254,6 +255,20 @@ export const api = {
       payload: { newReturnTime: string },
     ): Promise<AvailabilityWindow> {
       return request<AvailabilityWindow>(`/availability/${windowId}/return-early`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    /**
+     * Vacation mode: the host shares their spot for a whole trip — a
+     * multi-day window with a host-picked start and end (ISO instants) and
+     * the optional hourly price in cents (null = free). Ending the vacation
+     * early is the returnEarly endpoint above — it shrinks the window and
+     * never silently cancels a driver.
+     */
+    vacation(spaceId: string, payload: VacationPayload): Promise<AvailabilityWindow> {
+      return request<AvailabilityWindow>(`/spaces/${spaceId}/vacation`, {
         method: 'POST',
         body: JSON.stringify(payload),
       });

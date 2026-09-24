@@ -46,3 +46,19 @@ export function formatLongRemaining(ms: number): string {
   if (hours === 0) return `${minutes} min`;
   return `${hours} hr ${minutes} min`;
 }
+
+/**
+ * "3 days 15 hours" style trip-length label for the vacation-mode summary.
+ * Days and hours only — minutes are noise on a multi-day trip.
+ */
+export function formatTripLength(ms: number): string {
+  if (ms <= 0) return '0 hours';
+  const totalMinutes = Math.floor(ms / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+  if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
+  if (parts.length === 0) return `${totalMinutes} min`;
+  return parts.join(' ');
+}

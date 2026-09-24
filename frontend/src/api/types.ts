@@ -95,6 +95,16 @@ export interface SharePayload {
   hourlyRateCents?: number | null;
 }
 
+/** The vacation-mode payload: a multi-day share with a host-picked start and end. */
+export interface VacationPayload {
+  /** ISO instant of the vacation start. */
+  startDateTime: string;
+  /** ISO instant of the vacation end. */
+  endDateTime: string;
+  /** Integer cents per hour; null/omitted = free. */
+  hourlyRateCents?: number | null;
+}
+
 /**
  * One weekly commute entry. dayOfWeek is 0 = Monday .. 6 = Sunday; startTime
  * and endTime are local "HH:MM" times-of-day in the schedule's timezone.

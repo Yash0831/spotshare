@@ -18,6 +18,7 @@ import { formatRate } from '../utils/money';
 import { formatDateTime, formatRemaining, formatTime } from '../utils/time';
 import ShareSheet from '../components/ShareSheet';
 import CommuteMode from '../components/CommuteMode';
+import VacationMode from '../components/VacationMode';
 import ReturnEarlyDialog from '../components/ReturnEarlyDialog';
 
 const PARKING_TYPES = Object.keys(PARKING_TYPE_LABELS) as ParkingType[];
@@ -478,24 +479,35 @@ export default function SpaceDetail() {
                 {liveWindow && (
                   <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
                     <p className="text-sm font-bold text-sky-900">
-                      Available now — until {formatTime(liveWindow.endsAt)}
+                      {liveWindow.source === 'VACATION' ? (
+                        <>On vacation — until {formatDateTime(liveWindow.endsAt)}</>
+                      ) : (
+                        <>Available now — until {formatTime(liveWindow.endsAt)}</>
+                      )}
                       {liveWindow.source === 'COMMUTE' && (
                         <span className="ml-1 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
                           Auto · Commute
+                        </span>
+                      )}
+                      {liveWindow.source === 'VACATION' && (
+                        <span className="ml-1 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                          Vacation
                         </span>
                       )}
                     </p>
                     <p className="mt-1 text-sm text-sky-800">
                       {formatRate(liveWindow.hourlyRateCents)} ·{' '}
                       {formatRemaining(new Date(liveWindow.endsAt).getTime() - Date.now())} left ·{' '}
-                      expires automatically at your return time
+                      {liveWindow.source === 'VACATION'
+                        ? 'ends when you\u2019re back — or end it early below'
+                        : 'expires automatically at your return time'}
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowReturnEarly(true)}
                       className="mt-3 rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
                     >
-                      I&rsquo;m back early
+                      {liveWindow.source === 'VACATION' ? 'I\u2019m back' : 'I\u2019m back early'}
                     </button>
                   </div>
                 )}
@@ -507,6 +519,11 @@ export default function SpaceDetail() {
                         {w.source === 'COMMUTE' && (
                           <span className="ml-1 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
                             Auto · Commute
+                          </span>
+                        )}
+                        {w.source === 'VACATION' && (
+                          <span className="ml-1 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                            Vacation
                           </span>
                         )}
                       </p>
@@ -535,6 +552,14 @@ export default function SpaceDetail() {
 
           {space.active && (
             <CommuteMode
+              spaceId={space.id}
+              onWindowsChanged={() => void loadWindows()}
+              onSessionExpired={() => setExpired(true)}
+            />
+          )}
+
+          {space.active && (
+            <VacationMode
               spaceId={space.id}
               onWindowsChanged={() => void loadWindows()}
               onSessionExpired={() => setExpired(true)}
