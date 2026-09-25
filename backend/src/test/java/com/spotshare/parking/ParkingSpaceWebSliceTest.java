@@ -35,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.spotshare.auth.AuthenticatedUser;
 import com.spotshare.auth.JwtAuthenticationFilter;
 import com.spotshare.auth.SecurityConfig;
+import com.spotshare.availability.DisplayState;
 import com.spotshare.common.ApiException;
 import com.spotshare.config.AppProperties;
 import com.spotshare.parking.ParkingSpaceService.PhotoContent;
@@ -109,7 +110,8 @@ class ParkingSpaceWebSliceTest {
                 "Covered spot near the elevators.", List.of(VehicleSize.SEDAN), 84,
                 true, false, "Gate code 1234, level 2.", true,
                 OffsetDateTime.now(), active, List.of(),
-                OffsetDateTime.now(), OffsetDateTime.now());
+                OffsetDateTime.now(), OffsetDateTime.now(),
+                active ? DisplayState.PRIVATE : DisplayState.OFFLINE);
     }
 
     private String validCreateJson(boolean authorized) {
