@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -47,6 +48,7 @@ public class NominatimGeocodingProvider implements GeocodingProvider {
     private final GeocodingProperties properties;
     private final AtomicLong lastCallMillis = new AtomicLong(0);
 
+    @Autowired
     public NominatimGeocodingProvider(ObjectMapper objectMapper, GeocodingProperties properties) {
         this(objectMapper, properties, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
