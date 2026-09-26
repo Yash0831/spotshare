@@ -284,9 +284,13 @@ cp .env.example .env   # set DB_PASSWORD and JWT_SECRET (long random string) at 
 # 2. Start the database (PostGIS image; Phase 2 uses the PostGIS extension)
 docker compose up -d
 
-# 3. Run the backend (Flyway migrates automatically on boot)
+# 3. Run the backend (Flyway migrates automatically on boot).
+#    NOTE: `mvn spring-boot:run` does not read .env by itself (only
+#    `docker compose` does), so load it into your shell first.
 export JAVA_HOME=/opt/jdk21 PATH=/opt/jdk21/bin:/opt/maven/bin:$PATH
-cd backend && mvn -o spring-boot:run
+cd backend
+set -a; source ../.env; set +a   # repeat in every new terminal before mvn
+mvn spring-boot:run
 # → http://localhost:8080
 
 # 4. Run the frontend
