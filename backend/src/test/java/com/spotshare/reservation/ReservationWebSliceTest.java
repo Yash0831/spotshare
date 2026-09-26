@@ -230,13 +230,15 @@ class ReservationWebSliceTest {
     void hostArrivalsListsTheDaysReservations() throws Exception {
         OffsetDateTime arrival = OffsetDateTime.of(2026, 9, 24, 14, 0, 0, 0, ZoneOffset.UTC);
         var arrivals = List.of(new HostArrivalDto(reservationId, "SP-K84D2", "Dan D.",
-                arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null));
+                arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null, spaceId, "B17"));
         given(reservations.arrivalsForSpace(eq(driverId), eq(spaceId), any())).willReturn(arrivals);
 
         mvc.perform(get("/api/v1/spaces/" + spaceId + "/reservations?date=2026-09-24"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].code").value("SP-K84D2"))
                 .andExpect(jsonPath("$[0].driverName").value("Dan D."))
+                .andExpect(jsonPath("$[0].spaceId").value(spaceId.toString()))
+                .andExpect(jsonPath("$[0].spaceLabel").value("B17"))
                 // The arrivals view never carries contact details.
                 .andExpect(jsonPath("$[0].driverEmail").doesNotExist())
                 .andExpect(jsonPath("$[0].address").doesNotExist());
@@ -256,6 +258,36 @@ class ReservationWebSliceTest {
     @Test
     void hostArrivalsRejectsABadDate() throws Exception {
         mvc.perform(get("/api/v1/spaces/" + spaceId + "/reservations?date=not-a-date"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void hostArrivalsAllSpansEveryOwnedSpace() throws Exception {
+        OffsetDateTime arrival = OffsetDateTime.of(2026, 9, 24, 14, 0, 0, 0, ZoneOffset.UTC);
+        UUID otherSpaceId = UUID.randomUUID();
+        var arrivals = List.of(
+                new HostArrivalDto(reservationId, "SP-K84D2", "Dan D.",
+                        arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null, spaceId, "B17"),
+                new HostArrivalDto(UUID.randomUUID(), "SP-Q91M8", "Holly H.",
+                        arrival.plusHours(3), arrival.plusHours(4), ReservationStatus.CONFIRMED, null,
+                        otherSpaceId, "C22"));
+        given(reservations.arrivalsForHost(eq(driverId), any())).willReturn(arrivals);
+
+        mvc.perform(get("/api/v1/reservations/host/arrivals?date=2026-09-24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].spaceLabel").value("B17"))
+                .andExpect(jsonPath("$[1].spaceLabel").value("C22"))
+                .andExpect(jsonPath("$[1].driverName").value("Holly H."))
+                // Privacy rules hold on the tab too: no contact details, no address.
+                .andExpect(jsonPath("$[0].driverEmail").doesNotExist())
+                .andExpect(jsonPath("$[0].address").doesNotExist());
+    }
+
+    @Test
+    void hostArrivalsAllRejectsABadDate() throws Exception {
+        mvc.perform(get("/api/v1/reservations/host/arrivals?date=not-a-date"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }

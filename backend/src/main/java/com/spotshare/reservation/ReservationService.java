@@ -318,6 +318,23 @@ public class ReservationService {
     }
 
     /**
+     * The host's arrivals tab: one day's reservations across every space
+     * they own — who (first name + last initial), when, which space, which
+     * code, what status. No ownership check per space is needed because the
+     * query itself is scoped to the host's spaces.
+     * {@code date} is a UTC day; omitted means today.
+     */
+    @Transactional(readOnly = true)
+    public List<HostArrivalDto> arrivalsForHost(UUID hostId, LocalDate date) {
+        LocalDate day = date != null ? date : LocalDate.now(clock);
+        OffsetDateTime start = day.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+        OffsetDateTime end = day.plusDays(1).atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+        return reservations.findArrivalsByHost(hostId, start, end).stream()
+                .map(HostArrivalDto::from)
+                .toList();
+    }
+
+    /**
      * Per-space transaction advisory lock (spec §9): held until this
      * transaction commits or rolls back, so concurrent bookings for the same
      * space serialize. Different spaces never block each other.

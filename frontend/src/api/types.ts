@@ -360,4 +360,7 @@ export interface HostArrival {
   departure: string;
   status: ReservationStatus;
   cancelledBy: 'DRIVER' | 'HOST' | null;
+  /** The booked space — present on the cross-space arrivals tab. */
+  spaceId: string;
+  spaceLabel: string;
 }

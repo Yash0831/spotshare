@@ -26,10 +26,26 @@ function renderDetail() {
   );
 }
 
+/**
+ * The shared fixture pins its dates to 2026-09-24, so the reservation
+ * reads as past once that day is over and the page hides the cancel
+ * button. Shift it into the future: these tests are about an upcoming
+ * reservation.
+ */
+function upcomingFixture() {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  return {
+    ...reservationDetailFixture,
+    arrival: new Date(now + 2 * HOUR).toISOString(),
+    departure: new Date(now + 4 * HOUR).toISOString(),
+  };
+}
+
 describe('ReservationDetail', () => {
   it('reveals the exact address and the booking code after confirming', async () => {
     getMock.mockReset();
-    getMock.mockResolvedValue(reservationDetailFixture);
+    getMock.mockResolvedValue(upcomingFixture());
     renderDetail();
 
     // The address reveal — the whole point of booking.
@@ -43,8 +59,9 @@ describe('ReservationDetail', () => {
   it('cancels with a confirmation step and shows the cancelled state', async () => {
     getMock.mockReset();
     cancelMock.mockReset();
-    getMock.mockResolvedValue(reservationDetailFixture);
-    cancelMock.mockResolvedValue({ ...reservationDetailFixture, status: 'CANCELLED' });
+    const fixture = upcomingFixture();
+    getMock.mockResolvedValue(fixture);
+    cancelMock.mockResolvedValue({ ...fixture, status: 'CANCELLED' });
     renderDetail();
 
     fireEvent.click(await screen.findByText('Cancel reservation'));

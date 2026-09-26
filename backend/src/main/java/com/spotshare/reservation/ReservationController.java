@@ -109,4 +109,18 @@ public class ReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return reservations.arrivalsForSpace(principal.id(), spaceId, date);
     }
+
+    /**
+     * The host's arrivals tab: that day's reservations across every space
+     * they own — driver as first name + last initial, arrival, departure,
+     * space label, code, status. {@code date} is {@code YYYY-MM-DD} in UTC;
+     * omitted means today.
+     */
+    @GetMapping("/reservations/host/arrivals")
+    public List<HostArrivalDto> hostArrivalsAll(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return reservations.arrivalsForHost(principal.id(), date);
+    }
 }

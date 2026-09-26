@@ -21,7 +21,10 @@ public record HostArrivalDto(
         OffsetDateTime arrival,
         OffsetDateTime departure,
         ReservationStatus status,
-        CancelledBy cancelledBy) {
+        CancelledBy cancelledBy,
+        /** The booked space — needed by the cross-space arrivals tab. */
+        UUID spaceId,
+        String spaceLabel) {
 
     public static HostArrivalDto from(Reservation r) {
         return new HostArrivalDto(
@@ -31,7 +34,9 @@ public record HostArrivalDto(
                 r.getArrival(),
                 r.getDeparture(),
                 r.getStatus(),
-                r.getCancelledBy());
+                r.getCancelledBy(),
+                r.getSpace().getId(),
+                r.getSpace().getLabel());
     }
 
     private static String displayName(String firstName, String lastName) {

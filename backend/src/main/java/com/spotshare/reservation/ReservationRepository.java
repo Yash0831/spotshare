@@ -103,4 +103,19 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     List<Reservation> findArrivalsBySpace(@Param("spaceId") UUID spaceId,
                                          @Param("start") OffsetDateTime start,
                                          @Param("end") OffsetDateTime end);
+
+    /**
+     * One day's reservations across every space the host owns, ordered by
+     * arrival. Backs the host's arrivals tab: one place to see all of
+     * today's bookings instead of opening each space. Driver and space are
+     * fetched here; the DTO reduces the driver to first name + last
+     * initial, per the privacy rules (spec §11).
+     */
+    @Query("select r from Reservation r join fetch r.driver join fetch r.space s"
+            + " where s.host.id = :hostId"
+            + " and r.arrival >= :start and r.arrival < :end"
+            + " order by r.arrival asc")
+    List<Reservation> findArrivalsByHost(@Param("hostId") UUID hostId,
+                                        @Param("start") OffsetDateTime start,
+                                        @Param("end") OffsetDateTime end);
 }

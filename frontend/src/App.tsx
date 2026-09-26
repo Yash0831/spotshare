@@ -7,6 +7,7 @@ import LoadingScreen from './components/LoadingScreen';
 // Route-level code splitting: each page becomes its own chunk so the first
 // paint (Home + auth) stays light — the Leaflet map bundle only loads when
 // the driver opens Explore or Park Now.
+const Arrivals = lazy(() => import('./pages/Arrivals'));
 const Explore = lazy(() => import('./pages/Explore'));
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
@@ -143,6 +144,16 @@ export default function App() {
               }
             />
             {/* Host pages — login required */}
+            <Route
+              path="/arrivals"
+              element={
+                <RequireAuth>
+                  <TabShell>
+                    <Arrivals />
+                  </TabShell>
+                </RequireAuth>
+              }
+            />
             <Route
               path="/parking"
               element={

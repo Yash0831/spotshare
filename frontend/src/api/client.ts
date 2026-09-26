@@ -389,6 +389,15 @@ export const api = {
     },
 
     /**
+     * The host's arrivals tab: today's reservations across every space
+     * they own. `date` is YYYY-MM-DD (UTC); omitted means today.
+     */
+    hostArrivalsAll(date?: string): Promise<HostArrival[]> {
+      const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+      return request<HostArrival[]>(`/reservations/host/arrivals${qs}`);
+    },
+
+    /**
      * Cancels an upcoming reservation — as the driver, or as the host of
      * the space. Idempotent: repeating the call for an already-cancelled
      * reservation still answers 200.
