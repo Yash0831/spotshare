@@ -78,7 +78,7 @@ export default function ParkNow() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Park now</h1>
+      <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">Park now</h1>
       <p className="text-sm text-slate-600">
         Finds shared spots near you, available right now for the next 2 hours.
       </p>
@@ -87,14 +87,14 @@ export default function ParkNow() {
         <button
           type="button"
           onClick={locateAndSearch}
-          className="w-full rounded-xl bg-sky-600 py-4 text-lg font-semibold text-white disabled:opacity-60"
+          className="w-full rounded-xl btn-brand py-4 text-lg font-semibold text-white disabled:opacity-60"
         >
           {searched ? '🔄 Search again near me' : '📍 Find parking near me'}
         </button>
       )}
 
       {geo.status === 'locating' && (
-        <p className="rounded-lg bg-sky-50 px-3 py-2 text-center text-sm text-sky-800" aria-live="polite">
+        <p className="rounded-lg bg-violet-50 px-3 py-2 text-center text-sm text-violet-800" aria-live="polite">
           Finding your location…
         </p>
       )}
@@ -114,7 +114,7 @@ export default function ParkNow() {
             type="button"
             onClick={manualSearch}
             disabled={!manual || loading}
-            className="mt-3 w-full rounded-lg bg-sky-600 py-2.5 font-semibold text-white disabled:opacity-60"
+            className="mt-3 w-full rounded-lg btn-brand py-2.5 font-semibold text-white disabled:opacity-60"
           >
             {loading ? 'Searching…' : 'Search near this destination'}
           </button>

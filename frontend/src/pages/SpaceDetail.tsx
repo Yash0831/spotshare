@@ -270,7 +270,7 @@ export default function SpaceDetail() {
   const badgeCls: Record<DisplayState, string> = {
     OFFLINE: 'bg-slate-200 text-slate-600',
     PRIVATE: 'bg-emerald-100 text-emerald-800',
-    AVAILABLE: 'bg-sky-100 text-sky-800',
+    AVAILABLE: 'bg-violet-100 text-violet-800',
     RETURNING: 'bg-amber-100 text-amber-800',
     RESERVED: 'bg-violet-100 text-violet-800',
   };
@@ -279,12 +279,12 @@ export default function SpaceDetail() {
   const upcomingWindows = (windows ?? []).filter((w) => !w.live);
 
   const inputCls =
-    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none';
+    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-violet-600 focus:outline-none';
   const labelCls = 'mb-1 block text-sm font-semibold text-slate-700';
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-8">
-      <Link to="/parking" className="text-sm font-semibold text-sky-700">
+      <Link to="/parking" className="text-sm font-semibold text-violet-700">
         ← My Parking
       </Link>
 
@@ -379,7 +379,7 @@ export default function SpaceDetail() {
                     onClick={() => setDraft({ ...draft, parkingType: t })}
                     className={`rounded-lg border px-3 py-2.5 text-sm font-semibold ${
                       draft.parkingType === t
-                        ? 'border-sky-700 bg-sky-50 text-sky-800'
+                        ? 'border-violet-700 bg-violet-50 text-violet-800'
                         : 'border-slate-300 bg-white text-slate-700'
                     }`}
                   >
@@ -406,7 +406,7 @@ export default function SpaceDetail() {
                       }
                       className={`rounded-full border px-4 py-2 text-sm font-semibold ${
                         on
-                          ? 'border-sky-700 bg-sky-50 text-sky-800'
+                          ? 'border-violet-700 bg-violet-50 text-violet-800'
                           : 'border-slate-300 bg-white text-slate-700'
                       }`}
                     >
@@ -433,7 +433,7 @@ export default function SpaceDetail() {
               </button>
               <button
                 onClick={() => void saveEdit()} disabled={saving}
-                className="flex-1 rounded-lg bg-sky-700 px-4 py-3 text-base font-semibold text-white shadow-sm disabled:opacity-60"
+                className="flex-1 rounded-lg btn-brand px-4 py-3 text-base font-semibold text-white disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save changes'}
               </button>
@@ -457,7 +457,7 @@ export default function SpaceDetail() {
           {space.active && (
             <button
               onClick={() => setShowShare(true)}
-              className="mt-4 block w-full rounded-xl bg-sky-700 px-4 py-4 text-center text-lg font-bold text-white shadow-sm"
+              className="mt-4 block w-full rounded-xl btn-brand px-4 py-4 text-center text-lg font-bold text-white"
             >
               Share my spot
             </button>
@@ -477,8 +477,8 @@ export default function SpaceDetail() {
             ) : (
               <div className="mt-2 space-y-2">
                 {liveWindow && (
-                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
-                    <p className="text-sm font-bold text-sky-900">
+                  <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
+                    <p className="text-sm font-bold text-violet-900">
                       {liveWindow.source === 'VACATION' ? (
                         <>On vacation — until {formatDateTime(liveWindow.endsAt)}</>
                       ) : (
@@ -495,7 +495,7 @@ export default function SpaceDetail() {
                         </span>
                       )}
                     </p>
-                    <p className="mt-1 text-sm text-sky-800">
+                    <p className="mt-1 text-sm text-violet-800">
                       {formatRate(liveWindow.hourlyRateCents)} ·{' '}
                       {formatRemaining(new Date(liveWindow.endsAt).getTime() - Date.now())} left ·{' '}
                       {liveWindow.source === 'VACATION'
@@ -505,7 +505,7 @@ export default function SpaceDetail() {
                     <button
                       type="button"
                       onClick={() => setShowReturnEarly(true)}
-                      className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
+                      className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800"
                     >
                       {liveWindow.source === 'VACATION' ? 'I\u2019m back' : 'I\u2019m back early'}
                     </button>
@@ -627,7 +627,7 @@ export default function SpaceDetail() {
           <div className="mt-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Photos</h2>
-              <label className="cursor-pointer text-sm font-semibold text-sky-700">
+              <label className="cursor-pointer text-sm font-semibold text-violet-700">
                 {uploading ? 'Uploading…' : '+ Add'}
                 <input
                   type="file" accept="image/jpeg,image/png,image/webp" multiple

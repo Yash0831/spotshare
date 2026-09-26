@@ -116,14 +116,14 @@ export default function VacationMode({
   }
 
   const inputCls =
-    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none';
+    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-violet-600 focus:outline-none';
 
   if (!showForm) {
     return (
       <button
         type="button"
         onClick={() => setShowForm(true)}
-        className="mt-3 w-full rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-sky-700"
+        className="mt-3 w-full rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-violet-700"
       >
         + Going on vacation? Share for the whole trip
       </button>
@@ -195,7 +195,7 @@ export default function VacationMode({
               onClick={() => setPriceMode(mode)}
               className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${
                 priceMode === mode
-                  ? 'border-sky-700 bg-sky-50 text-sky-800'
+                  ? 'border-violet-700 bg-violet-50 text-violet-800'
                   : 'border-slate-300 bg-white text-slate-700'
               }`}
             >
@@ -239,7 +239,7 @@ export default function VacationMode({
           type="button"
           onClick={() => void create()}
           disabled={saving}
-          className="flex-1 rounded-lg bg-sky-700 px-4 py-3 text-base font-bold text-white shadow-sm disabled:opacity-60"
+          className="flex-1 rounded-lg btn-brand px-4 py-3 text-base font-bold text-white disabled:opacity-60"
         >
           {saving ? 'Sharing…' : 'Share for the trip'}
         </button>

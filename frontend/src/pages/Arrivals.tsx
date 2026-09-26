@@ -57,7 +57,7 @@ export default function Arrivals() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-900">Today&apos;s arrivals</h1>
+      <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-500 to-teal-600 bg-clip-text text-transparent">Today&apos;s arrivals</h1>
       <p className="mt-1 text-sm text-slate-600">
         Bookings for all your spaces, in one place.
       </p>
@@ -86,7 +86,7 @@ export default function Arrivals() {
                 <div className="flex items-center justify-between gap-2">
                   <Link
                     to={`/parking/${a.spaceId}`}
-                    className="font-semibold text-sky-700 hover:underline"
+                    className="font-semibold text-violet-700 hover:underline"
                   >
                     {a.spaceLabel}
                   </Link>

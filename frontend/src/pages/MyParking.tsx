@@ -104,7 +104,7 @@ export default function MyParking() {
   const badgeCls: Record<DisplayState, string> = {
     OFFLINE: 'bg-slate-200 text-slate-600',
     PRIVATE: 'bg-emerald-100 text-emerald-800',
-    AVAILABLE: 'bg-sky-100 text-sky-800',
+    AVAILABLE: 'bg-violet-100 text-violet-800',
     RETURNING: 'bg-amber-100 text-amber-800',
     RESERVED: 'bg-violet-100 text-violet-800',
   };
@@ -116,10 +116,10 @@ export default function MyParking() {
     <div className="mx-auto w-full max-w-md px-4 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-widest text-sky-700">SpotShare</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">My Parking</h1>
+          <p className="text-gradient text-sm font-bold uppercase tracking-widest">SpotShare</p>
+          <h1 className="mt-1 text-2xl font-bold bg-gradient-to-r from-sky-500 to-violet-600 bg-clip-text text-transparent">My Parking</h1>
         </div>
-        <Link to="/" className="text-sm font-semibold text-sky-700">
+        <Link to="/" className="text-sm font-semibold text-violet-700">
           Home
         </Link>
       </div>
@@ -137,12 +137,12 @@ export default function MyParking() {
           </h2>
           <div className="mt-2 space-y-2">
             {shares.map((w) => (
-              <div key={w.id} className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50 p-4">
+              <div key={w.id} className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 p-4">
                 <div>
-                  <p className="text-sm font-bold text-sky-900">
+                  <p className="text-sm font-bold text-violet-900">
                     {spaceLabel(w.spaceId)} · {w.live ? `Available until ${formatTime(w.endsAt)}` : `Shared until ${formatDateTime(w.endsAt)}`}
                   </p>
-                  <p className="mt-0.5 text-sm text-sky-800">{formatRate(w.hourlyRateCents)}</p>
+                  <p className="mt-0.5 text-sm text-violet-800">{formatRate(w.hourlyRateCents)}</p>
                 </div>
                 {!w.live ? (
                   <button
@@ -159,7 +159,7 @@ export default function MyParking() {
                   <button
                     type="button"
                     onClick={() => setReturnEarlyWindow(w)}
-                    className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
+                    className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800"
                   >
                     I&rsquo;m back early
                   </button>
@@ -188,7 +188,7 @@ export default function MyParking() {
           </p>
           <Link
             to="/parking/new"
-            className="mt-5 block w-full rounded-lg bg-sky-700 px-4 py-3 text-center text-base font-semibold text-white shadow-sm"
+            className="mt-5 block w-full rounded-lg btn-brand px-4 py-3 text-center text-base font-semibold text-white"
           >
             Add your space
           </Link>
@@ -196,7 +196,7 @@ export default function MyParking() {
       ) : (
         <div className="mt-6 space-y-4">
           {spaces.map((space) => (
-            <article key={space.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <article key={space.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               {space.photos[0] && (
                 <img
                   src={api.photoUrl(space.photos[0])}
@@ -247,7 +247,7 @@ export default function MyParking() {
           ))}
           <Link
             to="/parking/new"
-            className="block w-full rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-center text-base font-semibold text-sky-700"
+            className="block w-full rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-center text-base font-semibold text-violet-700"
           >
             + Add another space
           </Link>

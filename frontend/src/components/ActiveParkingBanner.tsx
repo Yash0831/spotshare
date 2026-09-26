@@ -17,7 +17,7 @@ export function ActiveParkingBanner({ detail }: { detail: ReservationDetail }) {
 
   return (
     <section aria-label="Active parking countdown" className="space-y-3">
-      <div className="rounded-2xl bg-emerald-700 p-5 text-center text-white shadow">
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 text-center text-white shadow-xl shadow-emerald-600/30">
         <p className="text-sm font-bold uppercase tracking-widest text-emerald-100">You&apos;re parked</p>
         <p className="mt-2 text-3xl font-extrabold tabular-nums">
           {countdown.isOver ? "Time's up" : `${countdown.label} remaining`}
@@ -46,7 +46,7 @@ export function ActiveParkingBanner({ detail }: { detail: ReservationDetail }) {
         href={directionsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="block rounded-xl bg-sky-600 px-4 py-3 text-center text-lg font-bold text-white"
+        className="block rounded-xl btn-brand px-4 py-3 text-center text-lg font-bold text-white"
       >
         Get directions
       </a>

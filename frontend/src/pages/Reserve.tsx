@@ -101,7 +101,7 @@ export default function Reserve() {
         <p className="text-sm text-slate-500">
           Please pick the spot again from Explore or Park Now so we can book the right times.
         </p>
-        <Link to="/explore" className="inline-block rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white">
+        <Link to="/explore" className="inline-block rounded-lg btn-brand px-4 py-2 font-semibold text-white">
           Back to Explore
         </Link>
       </div>
@@ -141,7 +141,7 @@ export default function Reserve() {
 
   return (
     <div className="space-y-4">
-      <Link to={`/spaces/${space.id}`} state={{ space }} className="text-sm font-medium text-sky-700">
+      <Link to={`/spaces/${space.id}`} state={{ space }} className="text-sm font-medium text-violet-700">
         ← Back to spot
       </Link>
       <h1 className="text-xl font-bold text-slate-900">Reserve this spot</h1>
@@ -216,7 +216,7 @@ export default function Reserve() {
         type="button"
         onClick={submit}
         disabled={submitting || !!validation}
-        className="w-full rounded-lg bg-sky-600 py-3 font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-lg btn-brand py-3 font-semibold text-white disabled:opacity-60"
       >
         {submitting ? 'Reserving…' : 'Confirm reservation'}
       </button>

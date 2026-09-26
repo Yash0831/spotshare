@@ -38,7 +38,8 @@ describe('SpaceCard', () => {
     expect(screen.getByText(/Hosted by Michael R\./)).toBeInTheDocument();
     expect(screen.getByText(/Est\. total \$6\.00/)).toBeInTheDocument();
     expect(screen.getByText(/Assigned space/)).toBeInTheDocument();
-    expect(screen.getByText(/Sedan, SUV/)).toBeInTheDocument();
+    expect(screen.getByText('Sedan')).toBeInTheDocument();
+    expect(screen.getByText('SUV')).toBeInTheDocument();
     expect(screen.getByText(/Covered/)).toBeInTheDocument();
   });
 

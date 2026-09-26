@@ -33,7 +33,7 @@ export default function SpaceCard({
     <Link
       to={`/spaces/${space.id}`}
       state={{ space, arrival, departure }}
-      className="block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow"
+      className="block overflow-hidden rounded-2xl border border-white bg-white/90 shadow-lg shadow-violet-100 backdrop-blur transition hover:shadow-xl hover:shadow-violet-200"
     >
       {photo ? (
         <img
@@ -44,27 +44,40 @@ export default function SpaceCard({
             decoding="async"
         />
       ) : (
-        <div className="flex h-36 w-full items-center justify-center bg-slate-100 text-3xl" aria-hidden>
+        <div className="flex h-36 w-full items-center justify-center bg-gradient-to-br from-violet-200 via-fuchsia-100 to-amber-100 text-3xl" aria-hidden>
           🅿️
         </div>
       )}
       <div className="p-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-lg font-bold text-slate-900">{formatRate(space.hourlyRateCents)}</p>
-          <p className="shrink-0 text-sm font-medium text-slate-500">
+        <div className="flex items-center justify-between gap-2">
+          <p className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1 text-lg font-bold text-white shadow-md shadow-fuchsia-600/25">{formatRate(space.hourlyRateCents)}</p>
+          <p className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
             {space.distanceMiles.toFixed(1)} mi away
           </p>
         </div>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600">
           {space.areaLabel}, {space.city}, {space.state}
         </p>
-        <p className="mt-2 text-sm text-slate-700">
-          {PARKING_TYPE_LABELS[space.parkingType]}
-          {' · '}
-          {space.vehicleSizes.map((v) => VEHICLE_SIZE_LABELS[v]).join(', ')}
-          {space.covered && ' · Covered'}
-          {space.evCharging && ' · EV charging'}
-        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-800">
+            {PARKING_TYPE_LABELS[space.parkingType]}
+          </span>
+          {space.vehicleSizes.map((v) => (
+            <span key={v} className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-800">
+              {VEHICLE_SIZE_LABELS[v]}
+            </span>
+          ))}
+          {space.covered && (
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+              Covered
+            </span>
+          )}
+          {space.evCharging && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+              ⚡ EV charging
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-sm text-slate-500">
           Available {formatDateTime(space.windowStartsAt)} – {formatDateTime(space.windowEndsAt)}
         </p>

@@ -113,7 +113,7 @@ export default function ShareSheet({
   const chipCls = (active: boolean) =>
     `flex-1 rounded-lg border px-3 py-3 text-base font-semibold ${
       active
-        ? 'border-sky-700 bg-sky-50 text-sky-800'
+        ? 'border-violet-700 bg-violet-50 text-violet-800'
         : 'border-slate-300 bg-white text-slate-700'
     }`;
 
@@ -161,7 +161,7 @@ export default function ShareSheet({
               min={minInput}
               value={customValue}
               onChange={(e) => setCustomValue(e.target.value)}
-              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600/40"
+              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-violet-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600/40"
             />
           )}
         </div>
@@ -201,7 +201,7 @@ export default function ShareSheet({
                 placeholder="3.00"
                 value={dollars}
                 onChange={(e) => setDollars(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-8 pr-4 text-base text-slate-900 focus:border-sky-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600/40"
+                className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-8 pr-4 text-base text-slate-900 focus:border-violet-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600/40"
               />
             </div>
           )}
@@ -227,7 +227,7 @@ export default function ShareSheet({
             type="button"
             onClick={() => void confirm()}
             disabled={sharing}
-            className="flex-1 rounded-lg bg-sky-700 px-4 py-3 text-base font-bold text-white shadow-sm disabled:opacity-60"
+            className="flex-1 rounded-lg btn-brand px-4 py-3 text-base font-bold text-white disabled:opacity-60"
           >
             {sharing ? 'Sharing…' : 'Share my spot'}
           </button>

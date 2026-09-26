@@ -77,7 +77,7 @@ export default function ReservationDetail() {
         <p className="text-sm text-slate-500">{error ?? 'Please try again.'}</p>
         <Link
           to="/reservations"
-          className="inline-block rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white"
+          className="inline-block rounded-lg btn-brand px-4 py-2 font-semibold text-white"
         >
           My reservations
         </Link>
@@ -94,7 +94,7 @@ export default function ReservationDetail() {
 
   return (
     <div className="space-y-4">
-      <Link to="/reservations" className="text-sm font-medium text-sky-700">
+      <Link to="/reservations" className="text-sm font-medium text-violet-700">
         ← My reservations
       </Link>
 

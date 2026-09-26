@@ -294,7 +294,7 @@ export default function CommuteMode({ spaceId, onWindowsChanged, onSessionExpire
             setShowForm(true);
             setError(null);
           }}
-          className="mt-3 w-full rounded-xl border-2 border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800"
+          className="mt-3 w-full rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-800"
         >
           + Add a weekly pattern
         </button>
@@ -309,7 +309,7 @@ export default function CommuteMode({ spaceId, onWindowsChanged, onSessionExpire
                 onClick={() => toggleDay(d)}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                   days.includes(d)
-                    ? 'bg-sky-700 text-white'
+                    ? 'btn-brand text-white'
                     : 'border border-slate-300 bg-white text-slate-700'
                 }`}
               >
@@ -348,7 +348,7 @@ export default function CommuteMode({ spaceId, onWindowsChanged, onSessionExpire
                 onClick={() => setPriceMode(mode)}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                   priceMode === mode
-                    ? 'bg-sky-700 text-white'
+                    ? 'btn-brand text-white'
                     : 'border border-slate-300 bg-white text-slate-700'
                 }`}
               >
@@ -389,7 +389,7 @@ export default function CommuteMode({ spaceId, onWindowsChanged, onSessionExpire
               type="button"
               disabled={saving}
               onClick={() => void create()}
-              className="flex-1 rounded-xl bg-sky-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded-xl btn-brand px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
             >
               {saving ? 'Saving…' : `Save${days.length > 1 ? ` ${days.length} days` : ''}`}
             </button>

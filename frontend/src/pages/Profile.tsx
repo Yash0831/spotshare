@@ -42,7 +42,7 @@ export default function Profile() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Profile</h1>
+      <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">Profile</h1>
 
       {user && (
         <div className="rounded-xl border border-slate-200 bg-white p-4">

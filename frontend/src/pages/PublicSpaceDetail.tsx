@@ -30,7 +30,7 @@ export default function PublicSpaceDetail() {
           Spot details open from the Explore or Park Now results — the page needs a fresh search
           result to show.
         </p>
-        <Link to="/explore" className="inline-block rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white">
+        <Link to="/explore" className="inline-block rounded-lg btn-brand px-4 py-2 font-semibold text-white">
           Back to Explore
         </Link>
       </div>
@@ -42,7 +42,7 @@ export default function PublicSpaceDetail() {
     return (
       <div className="space-y-4 text-center">
         <p className="text-lg font-semibold text-slate-800">Something doesn&apos;t match</p>
-        <Link to="/explore" className="inline-block rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white">
+        <Link to="/explore" className="inline-block rounded-lg btn-brand px-4 py-2 font-semibold text-white">
           Back to Explore
         </Link>
       </div>
@@ -51,7 +51,7 @@ export default function PublicSpaceDetail() {
 
   return (
     <div className="space-y-4">
-      <Link to="/explore" className="text-sm font-medium text-sky-700">
+      <Link to="/explore" className="text-sm font-medium text-violet-700">
         ← Back to results
       </Link>
 
@@ -136,7 +136,7 @@ export default function PublicSpaceDetail() {
         <Link
           to={`/spaces/${space.id}/reserve`}
           state={{ space, arrival: state?.arrival, departure: state?.departure }}
-          className="mt-3 block w-full rounded-lg bg-sky-600 py-3 text-center font-semibold text-white"
+          className="mt-3 block w-full rounded-lg btn-brand py-3 text-center font-semibold text-white"
         >
           Reserve this spot
         </Link>

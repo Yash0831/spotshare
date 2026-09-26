@@ -125,7 +125,7 @@ export default function ReturnEarlyDialog({
   const chipCls = (active: boolean) =>
     `flex-1 rounded-lg border px-2 py-3 text-sm font-semibold ${
       active
-        ? 'border-sky-700 bg-sky-50 text-sky-800'
+        ? 'border-violet-700 bg-violet-50 text-violet-800'
         : 'border-slate-300 bg-white text-slate-700'
     }`;
 
@@ -171,7 +171,7 @@ export default function ReturnEarlyDialog({
               max={toLocalInputValue(new Date(currentEnd - 60 * 1000))}
               value={customValue}
               onChange={(e) => setCustomValue(e.target.value)}
-              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-sky-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600/40"
+              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 focus:border-violet-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600/40"
             />
           )}
         </div>
@@ -196,7 +196,7 @@ export default function ReturnEarlyDialog({
             type="button"
             onClick={() => void confirm()}
             disabled={submitting}
-            className="flex-1 rounded-lg bg-sky-700 px-4 py-3 text-base font-bold text-white shadow-sm disabled:opacity-60"
+            className="flex-1 rounded-lg btn-brand px-4 py-3 text-base font-bold text-white disabled:opacity-60"
           >
             {submitting ? 'Updating…' : 'End share early'}
           </button>

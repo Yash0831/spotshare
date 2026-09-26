@@ -63,11 +63,11 @@ export default function App() {
       <AuthProvider>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1300] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-semibold focus:text-sky-700 focus:shadow-lg"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1300] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-semibold focus:text-violet-700 focus:shadow-lg"
         >
           Skip to main content
         </a>
-        <div id="main-content" tabIndex={-1} className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        <div id="main-content" tabIndex={-1} className="app-bg min-h-screen text-slate-900 antialiased">
           <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route path="/" element={<Home />} />

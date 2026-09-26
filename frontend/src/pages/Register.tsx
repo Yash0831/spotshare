@@ -12,7 +12,7 @@ function Field({
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <input
         {...props}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base shadow-sm focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/30"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base shadow-sm focus:border-violet-600 focus:outline-none focus:ring-2 focus:ring-violet-600/30"
       />
     </label>
   );
@@ -63,7 +63,7 @@ export default function Register() {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
+      <h1 className="text-2xl font-bold text-gradient">Create your account</h1>
       <p className="mt-1 text-slate-600">One account for finding and sharing parking.</p>
 
       {error && (
@@ -88,7 +88,7 @@ export default function Register() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-lg bg-sky-700 px-4 py-3 text-base font-semibold text-white shadow-sm disabled:opacity-60"
+          className="w-full rounded-lg btn-brand px-4 py-3 text-base font-semibold text-white disabled:opacity-60"
         >
           {busy ? 'Creating account…' : 'Create account'}
         </button>
@@ -96,7 +96,7 @@ export default function Register() {
 
       <p className="mt-6 text-center text-sm text-slate-600">
         Already have an account?{' '}
-        <Link to="/login" className="font-semibold text-sky-700 underline">
+        <Link to="/login" className="font-semibold text-violet-700 underline">
           Log in
         </Link>
       </p>

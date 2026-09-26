@@ -118,7 +118,7 @@ export default function DestinationInput({
                 aria-selected={false}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(c)}
-                className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-sky-50"
+                className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-violet-50"
               >
                 📍 {c.displayName}
               </button>

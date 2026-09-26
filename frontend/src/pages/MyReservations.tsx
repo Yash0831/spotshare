@@ -149,7 +149,7 @@ export default function MyReservations() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white"
+          className="rounded-lg btn-brand px-4 py-2 font-semibold text-white"
         >
           Try again
         </button>
@@ -160,7 +160,7 @@ export default function MyReservations() {
   if (loading) {
     return (
       <>
-        <h1 className="text-xl font-bold text-slate-900">My reservations</h1>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-600 bg-clip-text text-transparent">My reservations</h1>
         <ReservationSkeleton />
       </>
     );
@@ -171,7 +171,7 @@ export default function MyReservations() {
   if (total === 0) {
     return (
       <div className="space-y-4 text-center">
-        <h1 className="text-xl font-bold text-slate-900">My reservations</h1>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-600 bg-clip-text text-transparent">My reservations</h1>
         <div className="rounded-xl border border-slate-200 bg-white p-8">
           <p className="text-3xl" aria-hidden>
             🅿️
@@ -182,7 +182,7 @@ export default function MyReservations() {
           </p>
           <Link
             to="/explore"
-            className="mt-4 inline-block rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white"
+            className="mt-4 inline-block rounded-lg btn-brand px-4 py-2 font-semibold text-white"
           >
             Find parking
           </Link>
@@ -193,7 +193,7 @@ export default function MyReservations() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-slate-900">My reservations</h1>
+      <h1 className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-600 bg-clip-text text-transparent">My reservations</h1>
 
       {(active ?? []).length > 0 && (
         <section aria-label="Active reservations">

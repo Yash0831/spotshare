@@ -211,20 +211,20 @@ export default function SpaceWizard() {
   }
 
   const inputCls =
-    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-sky-600 focus:outline-none';
+    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-violet-600 focus:outline-none';
   const labelCls = 'mb-1 block text-sm font-semibold text-slate-700';
   const errCls = 'mt-1 text-sm text-red-600';
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-8">
-      <p className="text-sm font-semibold uppercase tracking-widest text-sky-700">SpotShare</p>
+      <p className="text-gradient text-sm font-bold uppercase tracking-widest">SpotShare</p>
       <h1 className="mt-1 text-2xl font-bold text-slate-900">Set up your space</h1>
 
       <ol className="mt-5 flex gap-1" aria-label="Setup progress">
         {STEPS.map((name, i) => (
           <li key={name} className="flex-1" title={name}>
             <div
-              className={`h-1.5 rounded-full ${i <= step ? 'bg-sky-700' : 'bg-slate-200'}`}
+              className={`h-1.5 rounded-full ${i <= step ? 'bg-gradient-to-r from-violet-600 to-indigo-600' : 'bg-slate-200'}`}
             />
           </li>
         ))}
@@ -334,7 +334,7 @@ export default function SpaceWizard() {
                     onClick={() => set('parkingType', t)}
                     className={`rounded-lg border px-3 py-3 text-sm font-semibold ${
                       fields.parkingType === t
-                        ? 'border-sky-700 bg-sky-50 text-sky-800'
+                        ? 'border-violet-700 bg-violet-50 text-violet-800'
                         : 'border-slate-300 bg-white text-slate-700'
                     }`}
                   >
@@ -362,7 +362,7 @@ export default function SpaceWizard() {
                       }
                       className={`rounded-full border px-4 py-2 text-sm font-semibold ${
                         on
-                          ? 'border-sky-700 bg-sky-50 text-sky-800'
+                          ? 'border-violet-700 bg-violet-50 text-violet-800'
                           : 'border-slate-300 bg-white text-slate-700'
                       }`}
                     >
@@ -388,14 +388,14 @@ export default function SpaceWizard() {
               <label className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-4 py-3">
                 <span className="text-sm font-semibold text-slate-700">Covered</span>
                 <input
-                  type="checkbox" className="h-5 w-5 accent-sky-700" checked={fields.covered}
+                  type="checkbox" className="h-5 w-5 accent-violet-600" checked={fields.covered}
                   onChange={(e) => set('covered', e.target.checked)}
                 />
               </label>
               <label className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-4 py-3">
                 <span className="text-sm font-semibold text-slate-700">EV charging available</span>
                 <input
-                  type="checkbox" className="h-5 w-5 accent-sky-700" checked={fields.evCharging}
+                  type="checkbox" className="h-5 w-5 accent-violet-600" checked={fields.evCharging}
                   onChange={(e) => set('evCharging', e.target.checked)}
                 />
               </label>
@@ -409,7 +409,7 @@ export default function SpaceWizard() {
               Add up to {MAX_PHOTOS} photos so drivers recognize the spot. JPEG, PNG, or WebP,
               under 5 MB each. You can skip this for now and add photos later.
             </p>
-            <label className="mt-4 block cursor-pointer rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm font-semibold text-sky-700">
+            <label className="mt-4 block cursor-pointer rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm font-semibold text-violet-700">
               Choose photos
               <input
                 type="file" accept="image/jpeg,image/png,image/webp" multiple
@@ -475,7 +475,7 @@ export default function SpaceWizard() {
             </div>
             <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-300 bg-white p-5">
               <input
-                type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-sky-700"
+                type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-violet-600"
                 checked={fields.authorizationConfirmed}
                 onChange={(e) => set('authorizationConfirmed', e.target.checked)}
               />
@@ -500,14 +500,14 @@ export default function SpaceWizard() {
         {step < STEPS.length - 1 ? (
           <button
             onClick={next}
-            className="flex-1 rounded-lg bg-sky-700 px-4 py-3 text-base font-semibold text-white shadow-sm"
+            className="flex-1 rounded-lg btn-brand px-4 py-3 text-base font-semibold text-white"
           >
             Continue
           </button>
         ) : (
           <button
             onClick={() => void submit()} disabled={submitting}
-            className="flex-1 rounded-lg bg-sky-700 px-4 py-3 text-base font-semibold text-white shadow-sm disabled:opacity-60"
+            className="flex-1 rounded-lg btn-brand px-4 py-3 text-base font-semibold text-white disabled:opacity-60"
           >
             {submitting ? 'Saving…' : createdSpaceId ? 'Retry photo upload' : 'Create my space'}
           </button>

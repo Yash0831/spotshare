@@ -94,7 +94,7 @@ export default function Explore() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Plan parking</h1>
+      <h1 className="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">Plan parking</h1>
 
       <DestinationInput value={destText} onPick={onPick} />
 
@@ -142,7 +142,7 @@ export default function Explore() {
         type="button"
         onClick={search}
         disabled={loading}
-        className="w-full rounded-lg bg-sky-600 py-3 font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-lg btn-brand py-3 font-semibold text-white disabled:opacity-60"
       >
         {loading ? 'Searching…' : 'Find parking'}
       </button>

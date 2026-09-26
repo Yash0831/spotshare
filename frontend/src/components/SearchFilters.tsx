@@ -52,7 +52,7 @@ export default function SearchFilters({
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-sm font-semibold text-slate-800">
-          Filters{activeCount > 0 && <span className="ml-1 text-sky-700">({activeCount})</span>}
+          Filters{activeCount > 0 && <span className="ml-1 text-violet-700">({activeCount})</span>}
         </span>
         <span aria-hidden className="text-slate-400">{open ? '▲' : '▼'}</span>
       </button>
@@ -124,7 +124,7 @@ export default function SearchFilters({
                 type="checkbox"
                 checked={filters.covered}
                 onChange={(e) => set('covered', e.target.checked)}
-                className="h-4 w-4 accent-sky-600"
+                className="h-4 w-4 accent-violet-600"
               />
               Covered parking
             </label>
@@ -133,7 +133,7 @@ export default function SearchFilters({
                 type="checkbox"
                 checked={filters.evCharging}
                 onChange={(e) => set('evCharging', e.target.checked)}
-                className="h-4 w-4 accent-sky-600"
+                className="h-4 w-4 accent-violet-600"
               />
               EV charging available
             </label>

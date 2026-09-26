@@ -2,14 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Primary call-to-action: violet → indigo gradient with a matching glow. */
+  .btn-brand {
+    @apply bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/25 transition hover:from-violet-500 hover:to-indigo-500 active:from-violet-700 active:to-indigo-700 disabled:opacity-60;
+  }
+
+  /* App page background: a soft pastel wash instead of flat gray. */
+  .app-bg {
+    @apply bg-gradient-to-b from-violet-50/70 via-white to-amber-50/50;
+  }
+
+  /* Gradient headline text: violet → fuchsia → amber. */
+  .text-gradient {
+    @apply bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500 bg-clip-text text-transparent;
+  }
+
+  /* Elevated white card with a violet-tinted shadow. */
+  .card-lift {
+    @apply rounded-2xl border border-white bg-white/90 shadow-xl shadow-violet-100 backdrop-blur;
+  }
+}
+
 /* Price pins on the discovery map: white pill with the hourly rate. */
 .price-pin {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 9999px;
   background: #ffffff;
-  border: 2px solid #0369a1;
-  color: #0c4a6e;
+  border: 2px solid #7c3aed;
+  color: #5b21b6;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -18,8 +40,8 @@
 }
 
 .price-pin-selected {
-  background: #0369a1;
-  border-color: #0c4a6e;
+  background: linear-gradient(to right, #7c3aed, #4f46e5);
+  border-color: #5b21b6;
   color: #ffffff;
 }
 
@@ -31,7 +53,7 @@
 /* Visible keyboard focus everywhere — one consistent affordance for
    keyboard and switch users, including on elements that reset outlines. */
 :focus-visible {
-  outline: 2px solid #0369a1;
+  outline: 2px solid #7c3aed;
   outline-offset: 2px;
 }
 

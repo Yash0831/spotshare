@@ -11,10 +11,10 @@ export default function LoadingScreen({ message = 'Loading…' }: { message?: st
       aria-live="polite"
       className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4"
     >
-      <p className="text-sm font-semibold uppercase tracking-widest text-sky-700">SpotShare</p>
+      <p className="text-gradient text-sm font-bold uppercase tracking-widest">SpotShare</p>
       <div
         aria-hidden
-        className="mt-5 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-sky-700"
+        className="mt-5 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-violet-700"
       />
       <p className="mt-4 text-sm text-slate-500">{message}</p>
     </div>
