@@ -28,6 +28,7 @@ function arrivalFixture(overrides: Partial<HostArrival> = {}): HostArrival {
     cancelledBy: null,
     spaceId: 'space-1',
     spaceLabel: 'B17',
+    driverPhone: null,
     ...overrides,
   };
 }
@@ -73,5 +74,18 @@ describe('Arrivals', () => {
     renderPage();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('boom');
+  });
+
+  it('shows the driver phone as a tap-to-call link on live arrivals', async () => {
+    hostArrivalsAllMock.mockResolvedValue([
+      arrivalFixture({ driverPhone: '+1-555-0200' }),
+      arrivalFixture({ id: 'arr-2', code: 'SP-Q91M8', driverName: 'Holly H.' }),
+    ]);
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: /\+1-555-0200/ });
+    expect(link).toHaveAttribute('href', 'tel:+1-555-0200');
+    // Only one arrival shares a number — exactly one call link renders.
+    expect(screen.getAllByRole('link', { name: /📞/ })).toHaveLength(1);
   });
 });

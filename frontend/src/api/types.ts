@@ -337,6 +337,14 @@ export interface ReservationDetail extends Reservation {
   spaceLabel: string;
   parkingInstructions: string | null;
   cancelledAt: string | null;
+  /**
+   * Counterparty phone, revealed only while CONFIRMED so host and driver
+   * can coordinate timing. The driver sees hostPhone, the host sees
+   * driverPhone; each is null for the other side and once the booking ends.
+   * Never present in discovery or reservation summaries.
+   */
+  hostPhone: string | null;
+  driverPhone: string | null;
 }
 
 export interface CreateReservationPayload {
@@ -356,6 +364,11 @@ export interface HostArrival {
   id: string;
   code: string;
   driverName: string;
+  /**
+   * The driver's phone — set only while the arrival is CONFIRMED so the
+   * host can coordinate timing. Null for cancelled/completed arrivals.
+   */
+  driverPhone: string | null;
   arrival: string;
   departure: string;
   status: ReservationStatus;

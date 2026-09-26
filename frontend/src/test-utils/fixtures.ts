@@ -49,4 +49,6 @@ export const reservationDetailFixture: ReservationDetail = {
   spaceLabel: 'B17',
   parkingInstructions: 'Gate code 4821, park in the marked bay.',
   cancelledAt: null,
+  hostPhone: null,
+  driverPhone: null,
 };

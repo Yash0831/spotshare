@@ -110,7 +110,7 @@ class ReservationWebSliceTest {
         return new ReservationDetailDto(reservationId, spaceId, "West Loop", "Chicago", "IL",
                 ParkingType.DRIVEWAY, arrival, arrival.plusHours(2), 300, 600,
                 ReservationStatus.CONFIRMED, "SP-K84D2", "B17", "123 Private Way", "60606",
-                "Gate code 1234", "Holly H.", "Dan D.", arrival);
+                "Gate code 1234", "Holly H.", "Dan D.", "+1-555-0100", null, arrival);
     }
 
     @Test
@@ -198,7 +198,9 @@ class ReservationWebSliceTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.address").value("123 Private Way"))
                 .andExpect(jsonPath("$.spaceLabel").value("B17"))
-                .andExpect(jsonPath("$.parkingInstructions").value("Gate code 1234"));
+                .andExpect(jsonPath("$.parkingInstructions").value("Gate code 1234"))
+                .andExpect(jsonPath("$.hostPhone").value("+1-555-0100"))
+                .andExpect(jsonPath("$.driverPhone").isEmpty());
     }
 
     @Test
@@ -256,7 +258,7 @@ class ReservationWebSliceTest {
     void hostArrivalsListsTheDaysReservations() throws Exception {
         OffsetDateTime arrival = OffsetDateTime.of(2026, 9, 24, 14, 0, 0, 0, ZoneOffset.UTC);
         var arrivals = List.of(new HostArrivalDto(reservationId, "SP-K84D2", "Dan D.",
-                arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null, spaceId, "B17"));
+                "+1-555-0200", arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null, spaceId, "B17"));
         given(reservations.arrivalsForSpace(eq(driverId), eq(spaceId), any())).willReturn(arrivals);
 
         mvc.perform(get("/api/v1/spaces/" + spaceId + "/reservations?date=2026-09-24"))
@@ -265,7 +267,9 @@ class ReservationWebSliceTest {
                 .andExpect(jsonPath("$[0].driverName").value("Dan D."))
                 .andExpect(jsonPath("$[0].spaceId").value(spaceId.toString()))
                 .andExpect(jsonPath("$[0].spaceLabel").value("B17"))
-                // The arrivals view never carries contact details.
+                // Live arrivals carry the driver's phone so the host can
+                // coordinate; email and address are never exposed here.
+                .andExpect(jsonPath("$[0].driverPhone").value("+1-555-0200"))
                 .andExpect(jsonPath("$[0].driverEmail").doesNotExist())
                 .andExpect(jsonPath("$[0].address").doesNotExist());
     }
@@ -293,9 +297,9 @@ class ReservationWebSliceTest {
         OffsetDateTime arrival = OffsetDateTime.of(2026, 9, 24, 14, 0, 0, 0, ZoneOffset.UTC);
         UUID otherSpaceId = UUID.randomUUID();
         var arrivals = List.of(
-                new HostArrivalDto(reservationId, "SP-K84D2", "Dan D.",
+                new HostArrivalDto(reservationId, "SP-K84D2", "Dan D.", null,
                         arrival, arrival.plusHours(2), ReservationStatus.CONFIRMED, null, spaceId, "B17"),
-                new HostArrivalDto(UUID.randomUUID(), "SP-Q91M8", "Holly H.",
+                new HostArrivalDto(UUID.randomUUID(), "SP-Q91M8", "Holly H.", null,
                         arrival.plusHours(3), arrival.plusHours(4), ReservationStatus.CONFIRMED, null,
                         otherSpaceId, "C22"));
         given(reservations.arrivalsForHost(eq(driverId), any())).willReturn(arrivals);

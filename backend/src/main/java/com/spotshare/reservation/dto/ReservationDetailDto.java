@@ -11,6 +11,13 @@ import com.spotshare.reservation.ReservationStatus;
  * The authorized reservation detail — the ONLY response that carries the
  * exact address, space number, and parking/access instructions, and only
  * for the reservation's driver (while CONFIRMED) or the space's host.
+ *
+ * Contact rule: while the reservation is CONFIRMED, each party sees the
+ * <em>counterparty's</em> phone number so host and driver can coordinate
+ * ("I'm running late", "can you be out by 6?"). The numbers are never
+ * exposed in discovery or in reservation summaries, and vanish once the
+ * booking is over — booking is the act that reveals, and un-booking
+ * revokes.
  */
 public record ReservationDetailDto(
         UUID id,
@@ -35,10 +42,24 @@ public record ReservationDetailDto(
         /** "Michael R." — first name plus last initial. */
         String hostName,
         String driverName,
+        /**
+         * The host's phone — set only for the driver caller while the
+         * reservation is CONFIRMED. Null for the host (it's their own
+         * number) and once the booking ends.
+         */
+        String hostPhone,
+        /**
+         * The driver's phone — set only for the host caller while the
+         * reservation is CONFIRMED. Null for the driver (it's their own
+         * number) and once the booking ends.
+         */
+        String driverPhone,
         OffsetDateTime createdAt) {
 
-    public static ReservationDetailDto from(Reservation r) {
+    public static ReservationDetailDto from(Reservation r, UUID callerId) {
         var space = r.getSpace();
+        boolean isHost = space.getHost().getId().equals(callerId);
+        boolean live = r.getStatus() == ReservationStatus.CONFIRMED;
         return new ReservationDetailDto(
                 r.getId(),
                 space.getId(),
@@ -58,6 +79,8 @@ public record ReservationDetailDto(
                 space.getParkingInstructions(),
                 displayName(space.getHost().getFirstName(), space.getHost().getLastName()),
                 displayName(r.getDriver().getFirstName(), r.getDriver().getLastName()),
+                !isHost && live ? space.getHost().getPhone() : null,
+                isHost && live ? r.getDriver().getPhone() : null,
                 r.getCreatedAt());
     }
 

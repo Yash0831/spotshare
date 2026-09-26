@@ -9,8 +9,10 @@ import { formatDateTime } from '../utils/time';
  * Today's arrivals: the host's bookings for the day across every space
  * they own — one tab instead of opening each space. Driver identity stays
  * privacy-safe (first name + last initial, spec §11); the host already
- * knows their own address, so none is shown. Cancelling an upcoming
- * arrival takes two taps and is recorded as host-cancelled, never silent.
+ * knows their own address, so none is shown. While a booking is live the
+ * host also gets the driver's phone number to coordinate timing; it
+ * vanishes once the booking ends. Cancelling an upcoming arrival takes
+ * two taps and is recorded as host-cancelled, never silent.
  */
 export default function Arrivals() {
   const [arrivals, setArrivals] = useState<HostArrival[] | null>(null);
@@ -99,6 +101,16 @@ export default function Arrivals() {
                   </span>
                 </div>
                 <p className="mt-1 font-semibold text-slate-900">{a.driverName}</p>
+                {a.driverPhone && (
+                  <p className="mt-1 text-sm text-slate-600">
+                    <a
+                      href={`tel:${a.driverPhone}`}
+                      className="font-medium text-violet-700 underline"
+                    >
+                      📞 {a.driverPhone}
+                    </a>
+                  </p>
+                )}
                 <p className="mt-1 text-sm text-slate-600">
                   {formatDateTime(a.arrival)} – {formatDateTime(a.departure)} ·{' '}
                   <span className="font-mono">{a.code}</span>

@@ -169,6 +169,22 @@ export default function ReservationDetail() {
         <p className="mt-1 text-sm text-slate-600">
           <span className="font-semibold">Host:</span> {detail.hostName}
         </p>
+        {detail.hostPhone && (
+          <p className="mt-1 text-sm text-slate-600">
+            <span className="font-semibold">Host phone:</span>{' '}
+            <a href={`tel:${detail.hostPhone}`} className="font-medium text-violet-700 underline">
+              {detail.hostPhone}
+            </a>
+          </p>
+        )}
+        {detail.driverPhone && (
+          <p className="mt-1 text-sm text-slate-600">
+            <span className="font-semibold">Driver phone:</span>{' '}
+            <a href={`tel:${detail.driverPhone}`} className="font-medium text-violet-700 underline">
+              {detail.driverPhone}
+            </a>
+          </p>
+        )}
         {detail.parkingInstructions && (
           <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             <span className="font-semibold">Host&apos;s instructions:</span> {detail.parkingInstructions}

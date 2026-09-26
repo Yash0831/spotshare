@@ -246,10 +246,10 @@ public class ReservationService {
         boolean isHost = reservation.getSpace().getHost().getId().equals(callerId);
         boolean isDriver = reservation.getDriver().getId().equals(callerId);
         if (isHost) {
-            return ReservationDetailDto.from(reservation);
+            return ReservationDetailDto.from(reservation, callerId);
         }
         if (isDriver && reservation.getStatus() == ReservationStatus.CONFIRMED) {
-            return ReservationDetailDto.from(reservation);
+            return ReservationDetailDto.from(reservation, callerId);
         }
         if (isDriver) {
             throw ApiException.forbidden("RESERVATION_NOT_ACTIVE",

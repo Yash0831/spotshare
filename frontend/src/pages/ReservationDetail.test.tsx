@@ -160,4 +160,24 @@ describe('ReservationDetail', () => {
     await screen.findByText('123 Wacker Dr');
     expect(screen.queryByText('Extend stay')).not.toBeInTheDocument();
   });
+
+  it('shows the host phone as a tap-to-call link while confirmed', async () => {
+    getMock.mockReset();
+    getMock.mockResolvedValue({ ...upcomingFixture(), hostPhone: '+1-555-0100' });
+    renderDetail();
+
+    const link = await screen.findByRole('link', { name: '+1-555-0100' });
+    expect(link).toHaveAttribute('href', 'tel:+1-555-0100');
+    expect(screen.getByText('Host phone:')).toBeInTheDocument();
+  });
+
+  it('hides the phone rows when no number is shared', async () => {
+    getMock.mockReset();
+    getMock.mockResolvedValue(upcomingFixture());
+    renderDetail();
+
+    await screen.findByText('123 Wacker Dr');
+    expect(screen.queryByText('Host phone:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Driver phone:')).not.toBeInTheDocument();
+  });
 });

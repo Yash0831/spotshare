@@ -10,14 +10,24 @@ import com.spotshare.reservation.ReservationStatus;
 /**
  * One row of the host's arrivals view (spec §12). Driver identity is
  * deliberately limited to first name + last initial (spec §11) — no
- * contact details, no full last name, nothing more. The exact address is
- * never included: the host already knows their own address.
+ * full last name, nothing more. The exact address is never included: the
+ * host already knows their own address.
+ *
+ * Contact rule: while the arrival is CONFIRMED the host also gets the
+ * driver's phone number, so the two can coordinate timing ("can you be
+ * out by 6?"). The number is never exposed in discovery, and vanishes
+ * from this view once the booking is cancelled or completed.
  */
 public record HostArrivalDto(
         UUID id,
         String code,
         /** "Michael R." — first name plus last initial, never more. */
         String driverName,
+        /**
+         * The driver's phone — set only while the arrival is CONFIRMED.
+         * Null for cancelled/completed arrivals.
+         */
+        String driverPhone,
         OffsetDateTime arrival,
         OffsetDateTime departure,
         ReservationStatus status,
@@ -31,6 +41,7 @@ public record HostArrivalDto(
                 r.getId(),
                 r.getCode(),
                 displayName(r.getDriver().getFirstName(), r.getDriver().getLastName()),
+                r.getStatus() == ReservationStatus.CONFIRMED ? r.getDriver().getPhone() : null,
                 r.getArrival(),
                 r.getDeparture(),
                 r.getStatus(),

@@ -386,6 +386,53 @@ class ReservationServiceTest {
                 .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("RESERVATION_NOT_FOUND"));
     }
 
+    // ---- contact reveal -----------------------------------------------------
+
+    private Reservation confirmedReservationWithPhones() {
+        User h = new User("host@example.com", "hash", "Holly", "Host", "+1-555-0100", Role.USER);
+        User d = new User("driver@example.com", "hash", "Dan", "Driver", "+1-555-0200", Role.USER);
+        ParkingSpace s = new ParkingSpace(h);
+        s.setActive(true);
+        return new Reservation(s, d, now().plusHours(1), now().plusHours(3),
+                300, 600, "SP-K84D2", null, now());
+    }
+
+    @Test
+    void driverSeesHostPhoneWhileConfirmed() {
+        Reservation reservation = confirmedReservationWithPhones();
+        given(reservations.findById(any())).willReturn(Optional.of(reservation));
+
+        var detail = service.get(reservation.getDriver().getId(), UUID.randomUUID());
+
+        assertThat(detail.hostPhone()).isEqualTo("+1-555-0100");
+        // The driver never sees their own number here.
+        assertThat(detail.driverPhone()).isNull();
+    }
+
+    @Test
+    void hostSeesDriverPhoneWhileConfirmed() {
+        Reservation reservation = confirmedReservationWithPhones();
+        given(reservations.findById(any())).willReturn(Optional.of(reservation));
+
+        var detail = service.get(reservation.getSpace().getHost().getId(), UUID.randomUUID());
+
+        assertThat(detail.driverPhone()).isEqualTo("+1-555-0200");
+        // The host never sees their own number here.
+        assertThat(detail.hostPhone()).isNull();
+    }
+
+    @Test
+    void hostSeesNoPhonesOnceCancelled() {
+        Reservation reservation = confirmedReservationWithPhones();
+        reservation.cancel(now(), CancelledBy.DRIVER);
+        given(reservations.findById(any())).willReturn(Optional.of(reservation));
+
+        var detail = service.get(reservation.getSpace().getHost().getId(), UUID.randomUUID());
+
+        assertThat(detail.hostPhone()).isNull();
+        assertThat(detail.driverPhone()).isNull();
+    }
+
     // ---- cancellation -------------------------------------------------------
 
     @Test
@@ -487,9 +534,28 @@ class ReservationServiceTest {
         assertThat(arrivals).hasSize(1);
         var row = arrivals.get(0);
         assertThat(row.code()).isEqualTo("SP-K84D2");
-        // First name + last initial only — never the full name or contact.
+        // First name + last initial only — never the full name. The phone
+        // is revealed separately, and only while the booking is live.
         assertThat(row.driverName()).isEqualTo("Dan D.");
         assertThat(row.status()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void arrivalsRevealDriverPhoneOnlyWhileConfirmed() {
+        Reservation live = confirmedReservationWithPhones();
+        Reservation dead = confirmedReservationWithPhones();
+        dead.cancel(now(), CancelledBy.DRIVER);
+        ParkingSpace s = live.getSpace();
+        given(spaces.findById(s.getId())).willReturn(Optional.of(s));
+        given(reservations.findArrivalsBySpace(eq(s.getId()), any(OffsetDateTime.class),
+                any(OffsetDateTime.class))).willReturn(List.of(live, dead));
+
+        var arrivals = service.arrivalsForSpace(
+                s.getHost().getId(), s.getId(), null);
+
+        assertThat(arrivals).hasSize(2);
+        assertThat(arrivals.get(0).driverPhone()).isEqualTo("+1-555-0200");
+        assertThat(arrivals.get(1).driverPhone()).isNull();
     }
 
     @Test
