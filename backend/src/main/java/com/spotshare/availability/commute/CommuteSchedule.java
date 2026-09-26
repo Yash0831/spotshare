@@ -41,8 +41,8 @@ public class CommuteSchedule {
     @JoinColumn(name = "space_id", nullable = false)
     private ParkingSpace space;
 
-    /** 0 = Monday, 6 = Sunday. */
-    @Column(name = "day_of_week", nullable = false)
+    /** 0 = Monday, 6 = Sunday. SMALLINT in the V5 migration; the columnDefinition keeps Hibernate's schema validation in agreement. */
+    @Column(name = "day_of_week", nullable = false, columnDefinition = "SMALLINT")
     private int dayOfWeek;
 
     @Column(name = "start_time", nullable = false)
