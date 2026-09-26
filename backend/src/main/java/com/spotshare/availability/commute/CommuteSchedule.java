@@ -14,6 +14,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 /**
  * One weekly commute entry for a space: "this spot is empty every Monday
  * 9:00–17:00". The materializer turns these rows into real
@@ -41,8 +44,11 @@ public class CommuteSchedule {
     @JoinColumn(name = "space_id", nullable = false)
     private ParkingSpace space;
 
-    /** 0 = Monday, 6 = Sunday. SMALLINT in the V5 migration; the columnDefinition keeps Hibernate's schema validation in agreement. */
-    @Column(name = "day_of_week", nullable = false, columnDefinition = "SMALLINT")
+    /** 0 = Monday, 6 = Sunday. The V5 migration defines this column as SMALLINT;
+     * {@code @JdbcTypeCode} keeps Hibernate's schema validation in agreement
+     * while the Java type stays {@code int}. */
+    @Column(name = "day_of_week", nullable = false)
+    @JdbcTypeCode(SqlTypes.SMALLINT)
     private int dayOfWeek;
 
     @Column(name = "start_time", nullable = false)
