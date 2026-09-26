@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -93,12 +94,17 @@ public class SearchRepository {
         // Nullable filters need explicit SQL types: PostgreSQL cannot infer a
         // bind parameter's type from "IS NULL" alone, so an untyped NULL
         // fails with "could not determine data type of parameter".
+        // Bind as timestamptz, not java.sql.Timestamp: the window columns are
+        // timestamptz, and a naive Timestamp is formatted in the JVM default
+        // zone but interpreted by PostgreSQL in the session TimeZone, silently
+        // shifting every search instant (e.g. -5h on a CDT laptop against a
+        // UTC database) so same-day searches never match their windows.
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("lat", lat)
                 .addValue("lng", lng)
                 .addValue("radiusMeters", radiusMeters)
-                .addValue("arrival", java.sql.Timestamp.from(arrival))
-                .addValue("departure", java.sql.Timestamp.from(departure))
+                .addValue("arrival", arrival.atOffset(ZoneOffset.UTC))
+                .addValue("departure", departure.atOffset(ZoneOffset.UTC))
                 .addValue("maxPriceCents", maxPriceCents, Types.INTEGER)
                 .addValue("covered", covered, Types.BOOLEAN)
                 .addValue("evCharging", evCharging, Types.BOOLEAN)
