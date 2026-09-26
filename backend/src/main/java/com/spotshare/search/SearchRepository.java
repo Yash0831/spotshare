@@ -3,6 +3,7 @@ package com.spotshare.search;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -89,16 +90,19 @@ public class SearchRepository {
                               Integer maxPriceCents, Boolean covered,
                               Boolean evCharging, String vehicleSize,
                               int limit, int offset) {
+        // Nullable filters need explicit SQL types: PostgreSQL cannot infer a
+        // bind parameter's type from "IS NULL" alone, so an untyped NULL
+        // fails with "could not determine data type of parameter".
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("lat", lat)
                 .addValue("lng", lng)
                 .addValue("radiusMeters", radiusMeters)
                 .addValue("arrival", java.sql.Timestamp.from(arrival))
                 .addValue("departure", java.sql.Timestamp.from(departure))
-                .addValue("maxPriceCents", maxPriceCents)
-                .addValue("covered", covered)
-                .addValue("evCharging", evCharging)
-                .addValue("vehicleSize", vehicleSize)
+                .addValue("maxPriceCents", maxPriceCents, Types.INTEGER)
+                .addValue("covered", covered, Types.BOOLEAN)
+                .addValue("evCharging", evCharging, Types.BOOLEAN)
+                .addValue("vehicleSize", vehicleSize, Types.VARCHAR)
                 .addValue("limit", limit)
                 .addValue("offset", offset);
         return jdbc.query(SEARCH_SQL, params, new SearchRowMapper());
