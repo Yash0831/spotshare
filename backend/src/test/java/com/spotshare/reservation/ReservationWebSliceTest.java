@@ -215,6 +215,32 @@ class ReservationWebSliceTest {
     }
 
     @Test
+    void extendReturnsTheUpdatedReservation() throws Exception {
+        OffsetDateTime newDeparture = dto().departure().plusHours(1);
+        ReservationDto extended = new ReservationDto(dto().id(), dto().spaceId(), dto().areaLabel(),
+                dto().city(), dto().state(), dto().parkingType(), dto().arrival(), newDeparture,
+                dto().hourlyRateCents(), 900, ReservationStatus.CONFIRMED,
+                dto().code(), null, dto().createdAt());
+        given(reservations.extend(eq(driverId), eq(reservationId), any(OffsetDateTime.class)))
+                .willReturn(extended);
+
+        mvc.perform(post("/api/v1/reservations/" + reservationId + "/extend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newDeparture\":\"2026-09-24T17:00:00Z\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.departure").value("2026-09-24T17:00:00Z"))
+                .andExpect(jsonPath("$.totalCents").value(900));
+    }
+
+    @Test
+    void extendWithoutNewDepartureIs400() throws Exception {
+        mvc.perform(post("/api/v1/reservations/" + reservationId + "/extend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void unauthenticatedRequestsAreRejected() throws Exception {
         SecurityContextHolder.clearContext();
         doAnswer(inv -> {

@@ -177,4 +177,17 @@ public class Reservation {
         this.cancelledBy = by;
         this.updatedAt = now;
     }
+
+    /**
+     * Extend the stay: stretches the half-open period to
+     * {@code [arrival, newDeparture)} and reprices the total at the
+     * snapshot hourly rate. The caller must have verified the three
+     * extend rules first (window covers the new period, no conflicting
+     * reservation, reservation not ended).
+     */
+    public void extend(OffsetDateTime newDeparture, int newTotalCents, OffsetDateTime now) {
+        this.departure = newDeparture;
+        this.totalCents = newTotalCents;
+        this.updatedAt = now;
+    }
 }

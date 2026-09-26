@@ -295,6 +295,90 @@ public class ReservationService {
     }
 
     /**
+     * Extend a stay: stretches the driver's CONFIRMED reservation to a new
+     * departure time, in one tap. This is the snipe-safe alternative to
+     * cancelling and re-booking — the checks and the update happen inside a
+     * single transaction, serialized per space by the advisory lock, so the
+     * race window shrinks to this one call.
+     *
+     * <p>Three rules, enforced in order:
+     * <ol>
+     *   <li>The reservation must still be alive — CONFIRMED and its current
+     *   departure still in the future. An ended, cancelled, or completed
+     *   reservation can't be extended.</li>
+     *   <li>The host's share window must cover the whole stretched period
+     *   {@code [arrival, newDeparture)} — a single window, same rule as
+     *   booking.</li>
+     *   <li>No other CONFIRMED reservation may overlap the extension slice
+     *   {@code [currentDeparture, newDeparture)}. Only the slice needs
+     *   checking: the original period was already conflict-free, and the
+     *   reservation itself is adjacent to (never overlapping) the slice.</li>
+     * </ol>
+     *
+     * <p>The total is repriced at the reservation's snapshot hourly rate —
+     * the price the driver already agreed to — prorated over the new
+     * period. The database exclusion constraint is the final backstop: if a
+     * concurrent booking commits first, the update fails and the driver
+     * gets the friendly 409, never a double-booking.
+     */
+    @Transactional
+    public ReservationDto extend(UUID driverId, UUID reservationId, OffsetDateTime newDeparture) {
+        Reservation reservation = reservations.findById(reservationId)
+                .orElseThrow(() -> ApiException.notFound("RESERVATION_NOT_FOUND",
+                        "We couldn't find that reservation."));
+        if (!reservation.getDriver().getId().equals(driverId)) {
+            throw ApiException.forbidden("NOT_YOUR_RESERVATION",
+                    "This reservation belongs to another account.");
+        }
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw ApiException.unprocessable("RESERVATION_CANCELLED",
+                    "This reservation was cancelled and can't be extended.");
+        }
+        if (reservation.getStatus() == ReservationStatus.COMPLETED) {
+            throw ApiException.unprocessable("RESERVATION_COMPLETED",
+                    "This reservation is already complete and can't be extended.");
+        }
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime currentDeparture = reservation.getDeparture();
+        if (!now.isBefore(currentDeparture)) {
+            throw ApiException.unprocessable("RESERVATION_ENDED",
+                    "This reservation has already ended and can't be extended.");
+        }
+        if (newDeparture == null || !newDeparture.isAfter(currentDeparture)) {
+            throw ApiException.unprocessable("INVALID_EXTENSION",
+                    "Your new departure time must be after your current one.");
+        }
+
+        UUID spaceId = reservation.getSpace().getId();
+        takeAdvisoryLock(spaceId);
+
+        OffsetDateTime arrival = reservation.getArrival();
+        windows.findContaining(spaceId, arrival, newDeparture).stream()
+                .findFirst()
+                .orElseThrow(() -> ApiException.unprocessable("PERIOD_NOT_AVAILABLE",
+                        "This parking space isn't shared for that extended time."));
+
+        if (reservations.existsConfirmedOverlap(spaceId, currentDeparture, newDeparture)) {
+            throw ApiException.conflict("SPACE_JUST_RESERVED",
+                    "That extra time was just reserved. Please choose another nearby space.");
+        }
+
+        int totalCents = Money.proratedTotalCents(
+                reservation.getHourlyRateCents(), arrival.toInstant(), newDeparture.toInstant());
+        reservation.extend(newDeparture, totalCents, now);
+        try {
+            return ReservationDto.from(reservations.save(reservation));
+        } catch (DataIntegrityViolationException e) {
+            if ("23P01".equals(sqlStateOf(e))) {
+                // The exclusion backstop fired: someone booked the slice first.
+                throw ApiException.conflict("SPACE_JUST_RESERVED",
+                        "That extra time was just reserved. Please choose another nearby space.");
+            }
+            throw e;
+        }
+    }
+
+    /**
      * The host's arrivals view (spec §12): one day's reservations for one
      * of their spaces — who (first name + last initial), when, which code,
      * what status. Only the space's host may call it; anyone else gets a

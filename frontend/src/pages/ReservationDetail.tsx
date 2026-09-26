@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { ApiError, ReservationDetail as Detail } from '../api/types';
 import { ActiveParkingBanner } from '../components/ActiveParkingBanner';
+import { ExtendStayPanel } from '../components/ExtendStayPanel';
 import { formatCents } from '../utils/money';
 import { formatDateTime } from '../utils/time';
 
@@ -26,6 +27,10 @@ export default function ReservationDetail() {
   const [error, setError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [extending, setExtending] = useState(false);
+  const [extendMinutes, setExtendMinutes] = useState(60);
+  const [savingExtend, setSavingExtend] = useState(false);
+  const [extendError, setExtendError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -66,6 +71,36 @@ export default function ReservationDetail() {
     }
   };
 
+  const extend = async () => {
+    if (!id || savingExtend || !detail) return;
+    setSavingExtend(true);
+    setExtendError(null);
+    try {
+      const newDeparture = new Date(
+        new Date(detail.departure).getTime() + extendMinutes * 60_000,
+      ).toISOString();
+      const updated = await api.reservations.extend(id, { newDeparture });
+      // The extend endpoint returns the summary; merge the new departure
+      // and repriced total into the loaded detail.
+      setDetail((prev) =>
+        prev
+          ? { ...prev, departure: updated.departure, totalCents: updated.totalCents, status: updated.status }
+          : prev,
+      );
+      setExtending(false);
+    } catch (err) {
+      setExtendError(
+        err instanceof ApiError && err.code === 'SPACE_JUST_RESERVED'
+          ? 'Someone just booked that extra time. Try a shorter extension.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not extend. Please try again.',
+      );
+    } finally {
+      setSavingExtend(false);
+    }
+  };
+
   if (loading) {
     return <p className="py-8 text-center text-sm text-slate-500">Loading reservation…</p>;
   }
@@ -91,6 +126,10 @@ export default function ReservationDetail() {
     detail.status === 'CONFIRMED' &&
     new Date(detail.arrival).getTime() <= Date.now() &&
     new Date(detail.departure).getTime() > Date.now();
+  // Extendable while the reservation is still alive — upcoming or active.
+  // One tap beats re-booking: the server checks and stretches atomically,
+  // so another driver can't snipe the extra time mid-flow.
+  const extendable = detail.status === 'CONFIRMED' && new Date(detail.departure).getTime() > Date.now();
 
   return (
     <div className="space-y-4">
@@ -168,6 +207,34 @@ export default function ReservationDetail() {
         >
           Cancel reservation
         </button>
+      )}
+
+      {extendable && !extending && (
+        <button
+          type="button"
+          onClick={() => {
+            setExtendMinutes(60);
+            setExtendError(null);
+            setExtending(true);
+          }}
+          className="w-full rounded-lg border border-violet-300 bg-white py-3 font-semibold text-violet-700"
+        >
+          Extend stay
+        </button>
+      )}
+
+      {extendable && extending && (
+        <ExtendStayPanel
+          arrival={detail.arrival}
+          departure={detail.departure}
+          hourlyRateCents={detail.hourlyRateCents}
+          extendMinutes={extendMinutes}
+          onSelectMinutes={setExtendMinutes}
+          onConfirm={extend}
+          onClose={() => setExtending(false)}
+          saving={savingExtend}
+          error={extendError}
+        />
       )}
 
       {upcoming && confirmingCancel && (

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.spotshare.auth.AuthenticatedUser;
 import com.spotshare.reservation.dto.CreateReservationRequest;
+import com.spotshare.reservation.dto.ExtendReservationRequest;
 import com.spotshare.reservation.dto.HostArrivalDto;
 import com.spotshare.reservation.dto.ReservationDetailDto;
 import com.spotshare.reservation.dto.ReservationDto;
@@ -93,6 +94,22 @@ public class ReservationController {
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable("id") UUID reservationId) {
         return reservations.cancel(principal.id(), reservationId);
+    }
+
+    /**
+     * Extend a stay: stretches the driver's CONFIRMED reservation to
+     * {@code newDeparture} in one tap. The server enforces the three
+     * extend rules — the reservation is still alive, the host's window
+     * covers the stretched period, and no other driver booked the extra
+     * time — so this is the snipe-safe alternative to re-booking. A lost
+     * race answers 409 SPACE_JUST_RESERVED.
+     */
+    @PostMapping("/reservations/{id}/extend")
+    public ReservationDto extend(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable("id") UUID reservationId,
+            @Valid @RequestBody ExtendReservationRequest req) {
+        return reservations.extend(principal.id(), reservationId, req.newDeparture());
     }
 
     /**

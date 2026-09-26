@@ -405,5 +405,20 @@ export const api = {
     cancel(id: string): Promise<Reservation> {
       return request<Reservation>(`/reservations/${id}/cancel`, { method: 'POST' });
     },
+
+    /**
+     * Extends a CONFIRMED reservation to a new departure time (ISO
+     * instant), in one tap. The server enforces the extend rules — the
+     * reservation is still alive, the host's window covers the stretched
+     * period, and no other driver booked the extra time — so this is the
+     * snipe-safe alternative to cancelling and re-booking. A lost race
+     * answers 409 with code SPACE_JUST_RESERVED.
+     */
+    extend(id: string, payload: { newDeparture: string }): Promise<Reservation> {
+      return request<Reservation>(`/reservations/${id}/extend`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
   },
 };

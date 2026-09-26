@@ -579,4 +579,145 @@ class ReservationServiceTest {
         assertThatThrownBy(() -> service.mine(driver.getId(), "someday"))
                 .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("INVALID_FILTER"));
     }
+
+    // ---- extend -------------------------------------------------------------
+
+    private void stubExtendHappyPath() {
+        given(windows.findContaining(any(), any(), any())).willReturn(List.of(window));
+        given(reservations.existsConfirmedOverlap(any(), any(), any())).willReturn(false);
+        given(reservations.save(any(Reservation.class)))
+                .willAnswer((Answer<Reservation>) inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void extendStretchesDepartureAndRepricesTotal() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+        stubExtendHappyPath();
+        OffsetDateTime newDeparture = now().plusHours(4);
+
+        var dto = service.extend(driver.getId(), reservation.getId(), newDeparture);
+
+        assertThat(dto.departure()).isEqualTo(newDeparture);
+        // 3 hours at $3.00/hr, repriced at the snapshot rate.
+        assertThat(dto.totalCents()).isEqualTo(900);
+        assertThat(dto.hourlyRateCents()).isEqualTo(300);
+        // Only the extension slice is checked for conflicts — the
+        // reservation itself is adjacent to it, never overlapping.
+        verify(reservations).existsConfirmedOverlap(
+                eq(space.getId()), eq(now().plusHours(3)), eq(newDeparture));
+        verify(windows).findContaining(eq(space.getId()), eq(now().plusHours(1)), eq(newDeparture));
+        verify(reservations).save(reservation);
+    }
+
+    @Test
+    void extendByAnotherDriverIs403() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> service.extend(UUID.randomUUID(), reservation.getId(), now().plusHours(4)))
+                .satisfies(e -> {
+                    ApiException api = (ApiException) e;
+                    assertThat(api.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(api.getCode()).isEqualTo("NOT_YOUR_RESERVATION");
+                });
+        verify(reservations, never()).save(any());
+    }
+
+    @Test
+    void extendMissingReservationIs404() {
+        given(reservations.findById(any())).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.extend(driver.getId(), UUID.randomUUID(), now().plusHours(4)))
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("RESERVATION_NOT_FOUND"));
+    }
+
+    @Test
+    void extendCancelledReservationIs422() {
+        Reservation reservation = confirmedReservation();
+        reservation.cancel(now(), CancelledBy.DRIVER);
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> service.extend(driver.getId(), reservation.getId(), now().plusHours(4)))
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("RESERVATION_CANCELLED"));
+        verify(reservations, never()).save(any());
+    }
+
+    @Test
+    void extendEndedReservationIs422() {
+        Reservation ended = new Reservation(space, driver, now().minusHours(3), now().minusHours(1),
+                300, 600, "SP-K84D2", null, now());
+        given(reservations.findById(ended.getId())).willReturn(Optional.of(ended));
+
+        assertThatThrownBy(() -> service.extend(driver.getId(), ended.getId(), now().plusHours(1)))
+                .satisfies(e -> {
+                    ApiException api = (ApiException) e;
+                    assertThat(api.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+                    assertThat(api.getCode()).isEqualTo("RESERVATION_ENDED");
+                });
+        verify(reservations, never()).save(any());
+    }
+
+    @Test
+    void extendToNonLaterDepartureIs422() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+
+        // Same instant and an earlier one are both rejected.
+        assertThatThrownBy(() -> service.extend(driver.getId(), reservation.getId(), now().plusHours(3)))
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("INVALID_EXTENSION"));
+        assertThatThrownBy(() -> service.extend(driver.getId(), reservation.getId(), now().plusHours(2)))
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("INVALID_EXTENSION"));
+        verify(reservations, never()).save(any());
+    }
+
+    @Test
+    void extendBeyondTheWindowIs422() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+        given(windows.findContaining(any(), any(), any())).willReturn(List.of());
+
+        assertThatThrownBy(() -> service.extend(driver.getId(), reservation.getId(), now().plusHours(6)))
+                .satisfies(e -> {
+                    ApiException api = (ApiException) e;
+                    assertThat(api.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+                    assertThat(api.getCode()).isEqualTo("PERIOD_NOT_AVAILABLE");
+                });
+        verify(reservations, never()).save(any());
+    }
+
+    @Test
+    void extendIntoABookedSliceIs409() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+        given(windows.findContaining(any(), any(), any())).willReturn(List.of(window));
+        given(reservations.existsConfirmedOverlap(any(), any(), any())).willReturn(true);
+
+        assertThatThrownBy(() -> service.extend(driver.getId(), reservation.getId(), now().plusHours(4)))
+                .satisfies(e -> {
+                    ApiException api = (ApiException) e;
+                    assertThat(api.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(api.getCode()).isEqualTo("SPACE_JUST_RESERVED");
+                });
+        verify(reservations, never()).save(any());
+    }
+
+    @Test
+    void extendRaceLostToTheExclusionBackstopIsFriendly409() {
+        Reservation reservation = confirmedReservation();
+        given(reservations.findById(reservation.getId())).willReturn(Optional.of(reservation));
+        given(windows.findContaining(any(), any(), any())).willReturn(List.of(window));
+        given(reservations.existsConfirmedOverlap(any(), any(), any())).willReturn(false);
+        DataIntegrityViolationException exclusion = new DataIntegrityViolationException(
+                "exclusion", new SQLException("conflicting key", "23P01"));
+        given(reservations.save(any(Reservation.class))).willThrow(exclusion);
+
+        assertThatThrownBy(() -> service.extend(driver.getId(), reservation.getId(), now().plusHours(4)))
+                .satisfies(e -> {
+                    ApiException api = (ApiException) e;
+                    assertThat(api.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(api.getCode()).isEqualTo("SPACE_JUST_RESERVED");
+                    assertThat(api.getMessage()).doesNotContain("exclusion", "23P01", "gist");
+                });
+    }
 }
